@@ -4,9 +4,10 @@
  * available in the current chat — agents can run this via the terminal from the workspace root.
  *
  * Usage (cwd = workspace root, where edf.config lives):
- *   node vendor/edf-client-kit/mcp/tickets-cli.mjs list [--limit N] [--status <status>]
+ *   node vendor/edf-client-kit/mcp/tickets-cli.mjs list [--limit N] [--status <status>] [--queue]
  *   node vendor/edf-client-kit/mcp/tickets-cli.mjs get <ticketUuid>
  *   node vendor/edf-client-kit/mcp/tickets-cli.mjs lookup <query>
+ *   node vendor/edf-client-kit/mcp/tickets-cli.mjs patch <ticketUuid> <path-to.json>
  *
  * Auth: EDF_PERSONAL_ACCESS_TOKEN (env or .cursor/mcp.json edf-tickets env).
  * Base URL: env EDF_BASE_URL, or edf.config DEV_APP_ORIGIN.
@@ -108,6 +109,34 @@ async function apiGet(workspaceRoot, cfg, pathname) {
   return { res, body };
 }
 
+async function apiPatch(workspaceRoot, cfg, pathname, jsonBody) {
+  const token = loadToken(workspaceRoot);
+  if (!token) {
+    throw new Error(
+      "No personal access token: set EDF_PERSONAL_ACCESS_TOKEN (edf_pat_…) in the environment or in .cursor/mcp.json under mcpServers.edf-tickets.env.",
+    );
+  }
+  const root = baseUrl(cfg);
+  const url = `${root}${pathname}`;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(jsonBody),
+  });
+  const text = await res.text();
+  let body;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    body = text;
+  }
+  return { res, body };
+}
+
 function printList(body) {
   if (typeof body !== "object" || body === null || body.ok !== true) {
     console.log(JSON.stringify(body, null, 2));
@@ -153,6 +182,8 @@ async function main() {
         q.set("limit", argv[++i]);
       } else if (argv[i] === "--status" && argv[i + 1]) {
         q.set("status", argv[++i]);
+      } else if (argv[i] === "--queue") {
+        q.set("queue", "1");
       }
     }
     const qs = q.toString();
@@ -180,6 +211,27 @@ async function main() {
     return;
   }
 
+  if (cmd === "patch" && argv[1] && argv[2]) {
+    const ticketId = argv[1];
+    const jsonPath = path.resolve(workspaceRoot, argv[2]);
+    const raw = fs.readFileSync(jsonPath, "utf8");
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      throw new Error(`Invalid JSON file: ${jsonPath}`);
+    }
+    const pathname = `/api/w/${encodeURIComponent(slug)}/tickets/${encodeURIComponent(ticketId)}`;
+    const { res, body } = await apiPatch(workspaceRoot, cfg, pathname, payload);
+    console.log(
+      typeof body === "string" ? body : JSON.stringify(body, null, 2),
+    );
+    if (!res.ok) {
+      process.exit(1);
+    }
+    return;
+  }
+
   if (cmd === "lookup" && argv[1]) {
     const query = argv[1];
     const params = new URLSearchParams({ q: query });
@@ -195,9 +247,10 @@ async function main() {
   }
 
   console.error(`Usage:
-  node .../tickets-cli.mjs list [--limit N] [--status <status>]
+  node .../tickets-cli.mjs list [--limit N] [--status <status>] [--queue]
   node .../tickets-cli.mjs get <ticketUuid>
   node .../tickets-cli.mjs lookup <query>
+  node .../tickets-cli.mjs patch <ticketUuid> <patch.json>
 `);
   process.exit(1);
 }

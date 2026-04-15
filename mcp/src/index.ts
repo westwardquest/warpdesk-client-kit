@@ -181,6 +181,129 @@ mcpServer.registerTool(
 );
 
 mcpServer.registerTool(
+  "list_priority_active_tickets",
+  {
+    description:
+      "List highest-priority active work-queue tickets (GET .../tickets?queue=1). Excludes draft, done, closed; ordered by priority_score. Does not replace list_tickets for full history.",
+    inputSchema: {
+      slug: z.string().describe("Workspace slug"),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+  },
+  async ({ slug, limit }) => {
+    const q = new URLSearchParams();
+    q.set("queue", "1");
+    if (limit != null) {
+      q.set("limit", String(limit));
+    }
+    const path = `/api/w/${encodeURIComponent(slug)}/tickets?${q.toString()}`;
+    let r: { text: string; isError?: boolean };
+    try {
+      r = await toolJson("GET", path);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      r = { text: msg, isError: true };
+    }
+    return {
+      content: [{ type: "text" as const, text: r.text }],
+      ...(r.isError ? { isError: true as const } : {}),
+    };
+  },
+);
+
+mcpServer.registerTool(
+  "update_ticket",
+  {
+    description:
+      "Partial update to a ticket (PATCH .../tickets/{id}). JSON fields optional: title, description, type, status, customer_score (developers) or customer_priority (clients: low|normal|high|max); developers may set assignee_user_id, code_link_url, priority_override_reason, deadline. Attachments are not changed via this tool.",
+    inputSchema: {
+      slug: z.string(),
+      ticketId: z.string().uuid(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      type: z.enum(["bug", "feature", "question", "chore"]).optional(),
+      status: z
+        .enum([
+          "draft",
+          "open",
+          "in_progress",
+          "blocked",
+          "waiting_on_client",
+          "done",
+          "closed",
+        ])
+        .optional(),
+      customer_score: z.number().min(0).max(100).optional(),
+      customer_priority: z
+        .enum(["low", "normal", "high", "max"])
+        .optional(),
+      assignee_user_id: z.string().uuid().nullable().optional(),
+      code_link_url: z.string().nullable().optional(),
+      priority_override_reason: z.string().nullable().optional(),
+      deadline: z.string().nullable().optional(),
+    },
+  },
+  async ({
+    slug,
+    ticketId,
+    title,
+    description,
+    type,
+    status,
+    customer_score,
+    customer_priority,
+    assignee_user_id,
+    code_link_url,
+    priority_override_reason,
+    deadline,
+  }) => {
+    const body: Record<string, unknown> = {};
+    if (title !== undefined) {
+      body.title = title;
+    }
+    if (description !== undefined) {
+      body.description = description;
+    }
+    if (type !== undefined) {
+      body.type = type;
+    }
+    if (status !== undefined) {
+      body.status = status;
+    }
+    if (customer_score !== undefined) {
+      body.customer_score = customer_score;
+    }
+    if (customer_priority !== undefined) {
+      body.customer_priority = customer_priority;
+    }
+    if (assignee_user_id !== undefined) {
+      body.assignee_user_id = assignee_user_id;
+    }
+    if (code_link_url !== undefined) {
+      body.code_link_url = code_link_url;
+    }
+    if (priority_override_reason !== undefined) {
+      body.priority_override_reason = priority_override_reason;
+    }
+    if (deadline !== undefined) {
+      body.deadline = deadline;
+    }
+    const path = `/api/w/${encodeURIComponent(slug)}/tickets/${encodeURIComponent(ticketId)}`;
+    let r: { text: string; isError?: boolean };
+    try {
+      r = await toolJson("PATCH", path, body);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      r = { text: msg, isError: true };
+    }
+    return {
+      content: [{ type: "text" as const, text: r.text }],
+      ...(r.isError ? { isError: true as const } : {}),
+    };
+  },
+);
+
+mcpServer.registerTool(
   "search_tickets",
   {
     description:

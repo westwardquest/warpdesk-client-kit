@@ -52,7 +52,7 @@ Quickstart defaults **`EDF_CLIENT_KIT_GIT_URL`** to **`https://github.com/westwa
 2. Re-run from the **framework** repo only when needed: **`npm run quickstart:customer -- --client-root <workspace-repo>`** — refresh bootstrap/session + **`.cursor/mcp.json`**.
 3. Knowledge webhook (if not created by quickstart `--push`): from the framework repo, **`node scripts/quickstarts/create-knowledge-webhook.mjs <workspace-root>`**.
 
-See the framework **`README.md`**, **[`docs/repository_layout.md`](../../docs/repository_layout.md)**, and **`examples/cursor-workspace/README.md`**.
+See the framework **`README.md`**, **[`docs/repository_layout.md`](../../docs/repository_layout.md)**, and **[`docs/agents_and_api.md`](../../docs/agents_and_api.md)** (MCP + quickstart).
 
 ## Env (MCP)
 

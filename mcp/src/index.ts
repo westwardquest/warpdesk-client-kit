@@ -1,9 +1,9 @@
 /**
  * Stdio MCP server: ticket tools call the app's HTTP API with a personal access token.
- * Draft tool `draft_ticket_update` writes YAML under `.edf/ticket-drafts/` (apply only via EDF Tools, not MCP).
+ * Draft tool `draft_ticket_update` writes YAML under `.warpdesk/ticket-drafts/` (apply only via WarpDesk Tools, not MCP).
  * Run: `npm run mcp:tickets` from this package directory with env set.
  *
- * Auth: `EDF_PERSONAL_ACCESS_TOKEN` (edf_pat_…) from app Settings → Personal access tokens.
+ * Auth: `WARPDESK_PERSONAL_ACCESS_TOKEN` (wds_pat_…) from app Settings → Personal access tokens.
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -11,7 +11,7 @@ import * as z from "zod/v4";
 import { loadWorkspaceConfig } from "./workspace-config";
 import { findWorkspaceRoot, writeTicketDraft } from "./ticket-draft";
 
-const PAT_ENV = "EDF_PERSONAL_ACCESS_TOKEN";
+const PAT_ENV = "WARPDESK_PERSONAL_ACCESS_TOKEN";
 
 function requireEnv(name: string): string {
   const v = process.env[name]?.trim();
@@ -23,7 +23,7 @@ function requireEnv(name: string): string {
 }
 
 function baseUrl(): string {
-  return requireEnv("EDF_BASE_URL").replace(/\/$/, "");
+  return requireEnv("WARPDESK_BASE_URL").replace(/\/$/, "");
 }
 
 function authHeaders(contentType?: string): Record<string, string> {
@@ -70,20 +70,20 @@ async function toolJson(
 }
 
 const mcpServer = new McpServer({
-  name: "edf-tickets",
+  name: "warpdesk-tickets",
   version: "0.1.0",
 });
 
-/** When set, registers legacy tools `update_ticket` and `add_ticket_comment`. Default is draft-only (`draft_ticket_update`); apply/reject drafts only via EDF Tools, not MCP. */
+/** When set, registers legacy tools `update_ticket` and `add_ticket_comment`. Default is draft-only (`draft_ticket_update`); apply/reject drafts only via WarpDesk Tools, not MCP. */
 const allowDirectTicketUpdates =
-  process.env.EDF_MCP_ALLOW_DIRECT_UPDATES === "1" ||
-  process.env.EDF_MCP_ALLOW_DIRECT_UPDATES === "true";
+  process.env.WARPDESK_MCP_ALLOW_DIRECT_UPDATES === "1" ||
+  process.env.WARPDESK_MCP_ALLOW_DIRECT_UPDATES === "true";
 
 mcpServer.registerTool(
   "bootstrap_workspace",
   {
     description:
-      "Create workspace + your developer membership (POST /api/workspaces/bootstrap). Use after local scaffold; read edf.config for name/slug and knowledge repo URL. Requires EDF_PERSONAL_ACCESS_TOKEN in MCP env.",
+      "Create workspace + your developer membership (POST /api/workspaces/bootstrap). Use after local scaffold; read warpdesk.config for name/slug and knowledge repo URL. Requires WARPDESK_PERSONAL_ACCESS_TOKEN in MCP env.",
     inputSchema: {
       name: z.string().min(1).describe("Workspace display name"),
       slug: z
@@ -246,9 +246,9 @@ mcpServer.registerTool(
   "draft_ticket_update",
   {
     description:
-      "Create a reviewable YAML draft under .edf/ticket-drafts/ (schema .ticket_draft). The human must open the draft in the EDF Tools ticket draft editor (VS Code) and use Confirm or Discard — do NOT call shell/CLI to apply or reject, and do not attempt to apply the draft via any other tool. Prefer this over direct updates for agent-driven ticket changes.",
+      "Create a reviewable YAML draft under .warpdesk/ticket-drafts/ (schema .ticket_draft). The human must open the draft in the WarpDesk Tools ticket draft editor (VS Code) and use Confirm or Discard — do NOT call shell/CLI to apply or reject, and do not attempt to apply the draft via any other tool. Prefer this over direct updates for agent-driven ticket changes.",
     inputSchema: {
-      slug: z.string().describe("Workspace slug (must match edf.config WORKSPACE_SLUG)"),
+      slug: z.string().describe("Workspace slug (must match warpdesk.config WORKSPACE_SLUG)"),
       ticketId: z.string().uuid().describe("Ticket UUID"),
       ...ticketPatchSchema,
       comment: z
@@ -268,7 +268,7 @@ mcpServer.registerTool(
         content: [
           {
             type: "text" as const,
-            text: "Could not find workspace root (edf.config). Open the client workspace folder in Cursor.",
+            text: "Could not find workspace root (warpdesk.config). Open the client workspace folder in Cursor.",
           },
         ],
         isError: true,
@@ -289,7 +289,7 @@ mcpServer.registerTool(
         content: [
           {
             type: "text" as const,
-            text: `slug "${args.slug}" does not match edf.config WORKSPACE_SLUG "${cfgSlug}".`,
+            text: `slug "${args.slug}" does not match warpdesk.config WORKSPACE_SLUG "${cfgSlug}".`,
           },
         ],
         isError: true,
@@ -322,7 +322,7 @@ mcpServer.registerTool(
     const text =
       `Wrote draft file (YAML).\n\n` +
       `draft_path (relative to workspace): ${r.draftRelativePath}\n\n` +
-      `Tell the user to open this file in the EDF Tools ticket draft editor and use Confirm (apply) or Discard. Do not run apply/reject via terminal, shell, or any MCP tool.\n` +
+      `Tell the user to open this file in the WarpDesk Tools ticket draft editor and use Confirm (apply) or Discard. Do not run apply/reject via terminal, shell, or any MCP tool.\n` +
       `absolutePath: ${r.absolutePath}`;
     return { content: [{ type: "text" as const, text }] };
   },
@@ -486,13 +486,13 @@ mcpServer.registerTool(
 }
 
 async function main() {
-  requireEnv("EDF_BASE_URL");
+  requireEnv("WARPDESK_BASE_URL");
   requireEnv(PAT_ENV);
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
 }
 
 main().catch((error) => {
-  console.error("edf-tickets MCP:", error);
+  console.error("warpdesk-tickets MCP:", error);
   process.exit(1);
 });

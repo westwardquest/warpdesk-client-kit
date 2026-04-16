@@ -1,18 +1,18 @@
 #!/usr/bin/env node
 /**
- * List / fetch EDF tickets over HTTP (same routes as MCP). Use when MCP tools are not
+ * List / fetch WarpDesk tickets over HTTP (same routes as MCP). Use when MCP tools are not
  * available in the current chat — agents can run this via the terminal from the workspace root.
- * Ticket draft apply/reject is not available here; use the edf-tools extension (Confirm/Discard).
+ * Ticket draft apply/reject is not available here; use the warpdesk-tools extension (Confirm/Discard).
  *
- * Usage (cwd = workspace root, where edf.config lives):
- *   node vendor/edf-client-kit/mcp/tickets-cli.mjs list [--limit N] [--status <status>] [--queue]
- *   node vendor/edf-client-kit/mcp/tickets-cli.mjs get <ticketUuid>
- *   node vendor/edf-client-kit/mcp/tickets-cli.mjs lookup <query>
- *   node vendor/edf-client-kit/mcp/tickets-cli.mjs patch <ticketUuid> <path-to.json>
+ * Usage (cwd = workspace root, where warpdesk.config lives):
+ *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs list [--limit N] [--status <status>] [--queue]
+ *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs get <ticketUuid>
+ *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs lookup <query>
+ *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs patch <ticketUuid> <path-to.json>
  *
- * Auth: EDF_PERSONAL_ACCESS_TOKEN (env or .cursor/mcp.json edf-tickets env).
- * Base URL: env EDF_BASE_URL, or edf.config DEV_APP_ORIGIN.
- * Slug: edf.config WORKSPACE_SLUG.
+ * Auth: WARPDESK_PERSONAL_ACCESS_TOKEN (env or .cursor/mcp.json warpdesk-tickets env).
+ * Base URL: env WARPDESK_BASE_URL, or warpdesk.config DEV_APP_ORIGIN.
+ * Slug: warpdesk.config WORKSPACE_SLUG.
  */
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -41,7 +41,7 @@ function parseConfig(raw) {
 }
 
 function loadToken(workspaceRoot) {
-  const patEnv = process.env.EDF_PERSONAL_ACCESS_TOKEN?.trim();
+  const patEnv = process.env.WARPDESK_PERSONAL_ACCESS_TOKEN?.trim();
   if (patEnv) {
     return patEnv;
   }
@@ -49,7 +49,7 @@ function loadToken(workspaceRoot) {
   if (fs.existsSync(mcpPath)) {
     try {
       const j = JSON.parse(fs.readFileSync(mcpPath, "utf8"));
-      const pat = j?.mcpServers?.["edf-tickets"]?.env?.EDF_PERSONAL_ACCESS_TOKEN;
+      const pat = j?.mcpServers?.["warpdesk-tickets"]?.env?.WARPDESK_PERSONAL_ACCESS_TOKEN;
       if (typeof pat === "string" && pat.trim()) {
         return pat.trim();
       }
@@ -61,14 +61,14 @@ function loadToken(workspaceRoot) {
 }
 
 function baseUrl(cfg) {
-  const env = process.env.EDF_BASE_URL?.trim();
+  const env = process.env.WARPDESK_BASE_URL?.trim();
   if (env) {
     return env.replace(/\/$/, "");
   }
   const origin = cfg.DEV_APP_ORIGIN?.trim();
   if (!origin) {
     throw new Error(
-      "Set DEV_APP_ORIGIN in edf.config or EDF_BASE_URL in the environment.",
+      "Set DEV_APP_ORIGIN in warpdesk.config or WARPDESK_BASE_URL in the environment.",
     );
   }
   return origin.replace(/\/$/, "");
@@ -78,7 +78,7 @@ async function apiGet(workspaceRoot, cfg, pathname) {
   const token = loadToken(workspaceRoot);
   if (!token) {
     throw new Error(
-      "No personal access token: set EDF_PERSONAL_ACCESS_TOKEN (edf_pat_…) in the environment or in .cursor/mcp.json under mcpServers.edf-tickets.env. Create one in the app: Settings → Personal access tokens.",
+      "No personal access token: set WARPDESK_PERSONAL_ACCESS_TOKEN (wds_pat_…) in the environment or in .cursor/mcp.json under mcpServers.warpdesk-tickets.env. Create one in the app: Settings → Personal access tokens.",
     );
   }
   const root = baseUrl(cfg);
@@ -103,7 +103,7 @@ async function apiPatch(workspaceRoot, cfg, pathname, jsonBody) {
   const token = loadToken(workspaceRoot);
   if (!token) {
     throw new Error(
-      "No personal access token: set EDF_PERSONAL_ACCESS_TOKEN (edf_pat_…) in the environment or in .cursor/mcp.json under mcpServers.edf-tickets.env.",
+      "No personal access token: set WARPDESK_PERSONAL_ACCESS_TOKEN (wds_pat_…) in the environment or in .cursor/mcp.json under mcpServers.warpdesk-tickets.env.",
     );
   }
   const root = baseUrl(cfg);
@@ -151,15 +151,15 @@ async function main() {
   const workspaceRoot = findWorkspaceRoot();
   if (!workspaceRoot) {
     throw new Error(
-      "edf.config not found — run this from the workspace repo root (or a subfolder under it).",
+      "warpdesk.config not found — run this from the workspace repo root (or a subfolder under it).",
     );
   }
   const cfg = parseConfig(
-    fs.readFileSync(path.join(workspaceRoot, "edf.config"), "utf8"),
+    fs.readFileSync(path.join(workspaceRoot, "warpdesk.config"), "utf8"),
   );
   const slug = cfg.WORKSPACE_SLUG?.trim();
   if (!slug) {
-    throw new Error("edf.config: WORKSPACE_SLUG is required.");
+    throw new Error("warpdesk.config: WORKSPACE_SLUG is required.");
   }
 
   const argv = process.argv.slice(2);
@@ -170,7 +170,7 @@ async function main() {
     const tsxCli = path.join(__dirname, "node_modules", "tsx", "dist", "cli.mjs");
     const draftCli = path.join(__dirname, "src", "ticket-draft-cli.ts");
     if (!fs.existsSync(tsxCli)) {
-      throw new Error(`tsx not found at ${tsxCli} — run npm install in vendor/edf-client-kit.`);
+      throw new Error(`tsx not found at ${tsxCli} — run npm install in vendor/warpdesk-client-kit.`);
     }
     const result = spawnSync(
       process.execPath,

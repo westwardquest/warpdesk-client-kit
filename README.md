@@ -1,38 +1,38 @@
-# EDF client kit
+# WarpDesk client kit
 
 Portable **ticket MCP** and **Cursor** onboarding for customer workspaces: `mcp/`, reference **`templates/`**, **`AGENTS.md`**, and this README.
 
-**In the Extreme Development Framework monorepo**, this tree is a **git submodule** at **`packages/edf-client-kit`** that tracks **[westwardquest/edf-client-kit](https://github.com/westwardquest/edf-client-kit)** — clone the framework with **`--recurse-submodules`**. Customer workspaces get **`vendor/edf-client-kit`** via **`npm run quickstart:customer`** (submodule when the workspace is a git repo) or **`scripts/quickstarts/setup-edf-kit.mjs`**.
+**In the WarpDesk framework monorepo**, this tree is a **git submodule** at **`packages/warpdesk-client-kit`** that tracks **[westwardquest/edf-client-kit](https://github.com/westwardquest/edf-client-kit)** — clone the framework with **`--recurse-submodules`**. Customer workspaces get **`vendor/warpdesk-client-kit`** via **`npm run quickstart:customer`** (submodule when the workspace is a git repo) or **`scripts/quickstarts/setup-warpdesk-kit.mjs`** (**`setup-edf-kit.mjs`** forwards to it for legacy callers).
 
 Workspace-only automation (webhook helper, quickstart, optional launch helper) lives in the framework repo under **`scripts/quickstarts/`** — see **[`docs/repository_layout.md`](../../docs/repository_layout.md)**.
 
 ## Publishing (maintainers)
 
-The **published** repo is **[github.com/westwardquest/edf-client-kit](https://github.com/westwardquest/edf-client-kit)**. Work in **`packages/edf-client-kit`** in the monorepo (that folder is the submodule checkout), commit, and push:
+The **published** repo is **[github.com/westwardquest/edf-client-kit](https://github.com/westwardquest/edf-client-kit)**. Work in **`packages/warpdesk-client-kit`** in the monorepo (that folder is the submodule checkout), commit, and push:
 
 ```bash
-cd packages/edf-client-kit
+cd packages/warpdesk-client-kit
 git push origin main
 
 cd ../..
-git add packages/edf-client-kit
-git commit -m "chore: bump edf-client-kit submodule"
+git add packages/warpdesk-client-kit
+git commit -m "chore: bump warpdesk-client-kit submodule"
 ```
 
-Full workflow and clone instructions: **[`scripts/setup-edf-kit-remote.md`](../../scripts/setup-edf-kit-remote.md)**.
+Full workflow and clone instructions: **[`scripts/setup-warpdesk-kit-remote.md`](../../scripts/setup-warpdesk-kit-remote.md)**.
 
-Quickstart defaults **`EDF_CLIENT_KIT_GIT_URL`** to **`https://github.com/westwardquest/edf-client-kit.git`**. Override in **`.env.local`** if you fork.
+Quickstart defaults **`WARPDESK_CLIENT_KIT_GIT_URL`** to **`https://github.com/westwardquest/edf-client-kit.git`**. Override in **`.env.local`** if you fork.
 
 ## Contents
 
-- **`mcp/`** — stdio MCP server (`npm run mcp:tickets`) plus **`mcp/tickets-cli.mjs`** (list/get/lookup/patch; **`draft`** for YAML ticket drafts under **`.edf/ticket-drafts/*.ticket_draft`**). Apply/reject drafts use **`mcp/lib/apply-ticket-draft.mjs`** from the **edf-tools** extension (not MCP or CLI). MCP **defaults to draft-only** for ticket mutations (no **`update_ticket`** / **`add_ticket_comment`** unless **`EDF_MCP_ALLOW_DIRECT_UPDATES=1`** in `mcp.json` env). Quickstart adds a workspace **`package.json`** with **`npm run edf:tickets`**, **`edf:ticket:draft`**, etc.
-- **`../edf-tools`** (framework monorepo) — optional **VS Code / Cursor** extension **edf-tools** (Apply / Discard ticket draft commands). Not vendored into customer repos by default; install from a VSIX or open the folder in **Extensions → Install from Location**.
-- **`templates/`** — `edf.config.example`, `workspace-users.json.example`, **`templates/workspace-AGENTS.stub.md`** (copied to the workspace root as **`AGENTS.md`** so the full rules stay in this kit), **`templates/edf-ticket-drafts.mdc`** (copied by quickstart to **`.cursor/rules/edf-ticket-drafts.mdc`** — draft-only ticket mutations), knowledge-repo template (used by quickstart from monorepo paths, not copied into trimmed `vendor/`).
+- **`mcp/`** — stdio MCP server (`npm run mcp:tickets`) plus **`mcp/tickets-cli.mjs`** (list/get/lookup/patch; **`draft`** for YAML ticket drafts under **`.warpdesk/ticket-drafts/*.ticket_draft`**). Apply/reject drafts use **`mcp/lib/apply-ticket-draft.mjs`** from the **warpdesk-tools** extension (not MCP or CLI). MCP **defaults to draft-only** for ticket mutations (no **`update_ticket`** / **`add_ticket_comment`** unless **`WARPDESK_MCP_ALLOW_DIRECT_UPDATES=1`** in `mcp.json` env). Quickstart adds a workspace **`package.json`** with **`npm run warpdesk:tickets`**, **`warpdesk:ticket:draft`**, etc.
+- **`../warpdesk-tools`** (framework monorepo) — optional **VS Code / Cursor** extension **warpdesk-tools** (Apply / Discard ticket draft commands). Not vendored into customer repos by default; install from a VSIX or open the folder in **Extensions → Install from Location**.
+- **`templates/`** — `warpdesk.config.example`, `workspace-users.json.example`, **`templates/workspace-AGENTS.stub.md`** (copied to the workspace root as **`AGENTS.md`** so the full rules stay in this kit), **`templates/warpdesk-ticket-drafts.mdc`** (copied by quickstart to **`.cursor/rules/warpdesk-ticket-drafts.mdc`** — draft-only ticket mutations), knowledge-repo template (used by quickstart from monorepo paths, not copied into trimmed `vendor/`).
 - **`AGENTS.md`** — full Cursor/agent rules for tickets, MCP, knowledge **`business/`** vs **`technical/`**, and git/push expectations.
 
-## Workspace copy under `vendor/edf-client-kit`
+## Workspace copy under `vendor/warpdesk-client-kit`
 
-- **With a workspace git root (default):** quickstart adds **`vendor/edf-client-kit`** as a **git submodule** — the full published tree is visible and pullable in Cursor’s Source Control.
+- **With a workspace git root (default):** quickstart adds **`vendor/warpdesk-client-kit`** as a **git submodule** — the full published tree is visible and pullable in Cursor’s Source Control.
 - **With `--no-git-init`:** quickstart uses a **shallow clone** and **trims** to runtime MCP files only:
 
   - `package.json`
@@ -45,11 +45,11 @@ Quickstart defaults **`EDF_CLIENT_KIT_GIT_URL`** to **`https://github.com/westwa
 ## Naming (fixed)
 
 - **Workspace slug** = main **workspace repo** folder name (GitHub-safe: `a-z`, `0-9`, hyphens).
-- **Knowledge repo** folder name is **`<slug>-knowledge-base`**, usually **nested** under the workspace clone (`quickstarts/<slug>/<slug>-knowledge-base/`). Only that repo gets the GitHub **`push`** webhook to EDF.
+- **Knowledge repo** folder name is **`<slug>-knowledge-base`**, usually **nested** under the workspace clone (`quickstarts/<slug>/<slug>-knowledge-base/`). Only that repo gets the GitHub **`push`** webhook to the WarpDesk app.
 
 ## After scaffold
 
-1. In **Cursor:** **Settings → Features → Model Context Protocol** → enable **edf-tickets** (quickstart cannot enable it automatically).
+1. In **Cursor:** **Settings → Features → Model Context Protocol** → enable **warpdesk-tickets** (quickstart cannot enable it automatically).
 2. Re-run from the **framework** repo only when needed: **`npm run quickstart:customer -- --client-root <workspace-repo>`** — refresh bootstrap/session + **`.cursor/mcp.json`**.
 3. Knowledge webhook (if not created by quickstart `--push`): from the framework repo, **`node scripts/quickstarts/create-knowledge-webhook.mjs <workspace-root>`**.
 
@@ -59,13 +59,13 @@ See the framework **`README.md`**, **[`docs/repository_layout.md`](../../docs/re
 
 | Variable | Purpose |
 | -------- | ------- |
-| `EDF_BASE_URL` | Same as `DEV_APP_ORIGIN` in `edf.config` (no trailing slash). Must match the deployment where the PAT was created. |
-| `EDF_PERSONAL_ACCESS_TOKEN` | **Required.** Full `edf_pat_…` from the app **Settings → Personal access tokens**. The MCP sends this as `Authorization: Bearer …` on every request (no `EDF_SUPABASE_ACCESS_TOKEN`). |
+| `WARPDESK_BASE_URL` | Same as `DEV_APP_ORIGIN` in `warpdesk.config` (no trailing slash). Must match the deployment where the PAT was created. |
+| `WARPDESK_PERSONAL_ACCESS_TOKEN` | **Required.** Full `wds_pat_…` from the app **Settings → Personal access tokens** (legacy `edf_pat_…` accepted). The MCP sends this as `Authorization: Bearer …` on every request — not Supabase session/JWT keys. |
 
 ## Updating the kit
 
-- **From a client workspace (submodule):** `vendor/edf-client-kit` is **tracked** by the workspace repo. Run **`git pull`** inside **`vendor/edf-client-kit`**, or **`git submodule update --remote vendor/edf-client-kit`** from the workspace root, then **`npm install`** there if needed.
-- **In the framework monorepo:** **`packages/edf-client-kit`** is the same GitHub repo — **`git pull`** / **`git push`** there (see **Publishing** above). No separate “sync from framework” script.
-- **Recreate from scratch:** re-run **`npm run quickstart:customer`** (or **`scripts/quickstarts/setup-edf-kit.mjs`**) if you prefer a clean tree.
+- **From a client workspace (submodule):** `vendor/warpdesk-client-kit` is **tracked** by the workspace repo. Run **`git pull`** inside **`vendor/warpdesk-client-kit`**, or **`git submodule update --remote vendor/warpdesk-client-kit`** from the workspace root, then **`npm install`** there if needed.
+- **In the framework monorepo:** **`packages/warpdesk-client-kit`** is the same GitHub repo — **`git pull`** / **`git push`** there (see **Publishing** above). No separate “sync from framework” script.
+- **Recreate from scratch:** re-run **`npm run quickstart:customer`** (or **`scripts/quickstarts/setup-warpdesk-kit.mjs`**) if you prefer a clean tree.
 
-**Shallow clone workspaces (`--no-git-init`):** `vendor/` stays gitignored; **`git pull`** inside **`vendor/edf-client-kit`** is still the simple path.
+**Shallow clone workspaces (`--no-git-init`):** `vendor/` stays gitignored; **`git pull`** inside **`vendor/warpdesk-client-kit`** is still the simple path.

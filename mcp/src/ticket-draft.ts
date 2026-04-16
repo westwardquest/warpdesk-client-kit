@@ -1,7 +1,7 @@
 /**
- * Ticket update drafts: YAML on disk under .edf/ticket-drafts/.
+ * Ticket update drafts: YAML on disk under .warpdesk/ticket-drafts/.
  * Apply/reject (PATCH + optional POST, or delete file) lives in ../lib/apply-ticket-draft.mjs
- * for the EDF Tools extension and must not be exposed to agents via MCP or draft CLI.
+ * for the WarpDesk Tools extension and must not be exposed to agents via MCP or draft CLI.
  */
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
@@ -40,7 +40,7 @@ function draftTemplate(
   initial: Partial<TicketDraftDoc>,
 ): string {
   const lines: string[] = [
-    `# EDF ticket update draft — edit optional fields, then open this file in the EDF Tools ticket draft editor and use Confirm or Discard.`,
+    `# WarpDesk ticket update draft — edit optional fields, then open this file in the WarpDesk Tools ticket draft editor and use Confirm or Discard.`,
     `# Do not apply via MCP tools, CLI, or shell; humans confirm in the extension only.`,
     `schema_version: 1`,
     `workspace_slug: ${YAML.stringify(slug).replace(/\n/g, "\n  ")}`,

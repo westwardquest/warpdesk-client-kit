@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "edf-tickets": {
+    "warpdesk-tickets": {
       "command": "npm",
       "args": ["run", "mcp:tickets"],
       "cwd": ".",
       "env": {
-        "EDF_BASE_URL": "https://your-app.example.com",
-        "EDF_PERSONAL_ACCESS_TOKEN": "edf_pat_paste_token_from_app_settings"
+        "WARPDESK_BASE_URL": "https://your-app.example.com",
+        "WARPDESK_PERSONAL_ACCESS_TOKEN": "wds_pat_paste_token_from_app_settings"
       }
     }
   }

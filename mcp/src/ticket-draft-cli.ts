@@ -18,7 +18,7 @@ async function main() {
   const workspaceRoot = findWorkspaceRoot();
   if (!workspaceRoot) {
     throw new Error(
-      "edf.config not found — run from the workspace repo root (or a subfolder under it).",
+      "warpdesk.config not found — run from the workspace repo root (or a subfolder under it).",
     );
   }
 
@@ -54,7 +54,7 @@ async function main() {
       ),
     );
     console.error(
-      "\nEdit the file if needed, then open it in the EDF Tools ticket draft editor and use Confirm or Discard (apply/reject are not available via CLI).\n",
+      "\nEdit the file if needed, then open it in the WarpDesk Tools ticket draft editor and use Confirm or Discard (apply/reject are not available via CLI).\n",
     );
     return;
   }

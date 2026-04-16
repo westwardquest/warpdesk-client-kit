@@ -1,8 +1,8 @@
 {
-  "name": "edf-client-kit",
+  "name": "warpdesk-client-kit",
   "version": "0.1.0",
   "private": true,
-  "description": "EDF client workspace kit: ticket MCP, Cursor templates, and launch scripts (portable; copy or clone into customer repos).",
+  "description": "WarpDesk client workspace kit: ticket MCP, Cursor templates, and launch scripts (portable; copy or clone into customer repos).",
   "scripts": {
     "mcp:tickets": "tsx mcp/src/index.ts",
     "tickets:list": "node mcp/tickets-cli.mjs list",

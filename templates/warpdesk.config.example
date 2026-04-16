@@ -1,9 +1,9 @@
-# Copy to edf.config (gitignored). Workspace repo folder name MUST equal WORKSPACE_SLUG.
+# Copy to warpdesk.config (gitignored). Workspace repo folder name MUST equal WORKSPACE_SLUG.
 # Knowledge repo name is always ${WORKSPACE_SLUG}-knowledge-base (sibling repository).
 
 WORKSPACE_NAME=My workspace
 WORKSPACE_SLUG=my-workspace
-DEV_APP_ORIGIN=https://extreme-development-framework.vercel.app
+DEV_APP_ORIGIN=https://warpdesk.vercel.app
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 

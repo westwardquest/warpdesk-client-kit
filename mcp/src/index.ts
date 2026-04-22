@@ -236,7 +236,6 @@ const ticketPatchSchema = {
   customer_priority: z.enum(["low", "normal", "high", "max"]).optional(),
   assignee_user_id: z.string().uuid().nullable().optional(),
   code_link_url: z.string().nullable().optional(),
-  priority_override_reason: z.string().nullable().optional(),
   deadline: z.string().nullable().optional(),
 };
 
@@ -362,7 +361,7 @@ mcpServer.registerTool(
   "update_ticket",
   {
     description:
-      "Partial update to a ticket (PATCH .../tickets/{id}). JSON fields optional: title, description, type, status, customer_score (developers) or customer_priority (clients: low|normal|high|max); developers may set assignee_user_id, code_link_url, priority_override_reason, deadline. Attachments are not changed via this tool.",
+      "Partial update to a ticket (PATCH .../tickets/{id}). JSON fields optional: title, description, type, status, customer_score (developers) or customer_priority (clients: low|normal|high|max); developers may set assignee_user_id, code_link_url, deadline. Attachments are not changed via this tool.",
     inputSchema: {
       slug: z.string(),
       ticketId: z.string().uuid(),
@@ -385,7 +384,6 @@ mcpServer.registerTool(
         .optional(),
       assignee_user_id: z.string().uuid().nullable().optional(),
       code_link_url: z.string().nullable().optional(),
-      priority_override_reason: z.string().nullable().optional(),
       deadline: z.string().nullable().optional(),
     },
   },
@@ -400,7 +398,6 @@ mcpServer.registerTool(
     customer_priority,
     assignee_user_id,
     code_link_url,
-    priority_override_reason,
     deadline,
   }) => {
     const body: Record<string, unknown> = {};
@@ -427,9 +424,6 @@ mcpServer.registerTool(
     }
     if (code_link_url !== undefined) {
       body.code_link_url = code_link_url;
-    }
-    if (priority_override_reason !== undefined) {
-      body.priority_override_reason = priority_override_reason;
     }
     if (deadline !== undefined) {
       body.deadline = deadline;

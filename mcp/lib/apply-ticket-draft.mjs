@@ -15,7 +15,6 @@ const PATCH_KEYS = [
   "customer_priority",
   "assignee_user_id",
   "code_link_url",
-  "priority_override_reason",
   "deadline",
 ];
 

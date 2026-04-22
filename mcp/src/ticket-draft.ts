@@ -25,7 +25,6 @@ export type TicketDraftDoc = {
   customer_priority?: string;
   assignee_user_id?: string | null;
   code_link_url?: string | null;
-  priority_override_reason?: string | null;
   deadline?: string | null;
   comment?: {
     body?: string;
@@ -74,11 +73,6 @@ function draftTemplate(
   );
   optionalYaml("assignee_user_id", initial.assignee_user_id, "uuid or null");
   optionalYaml("code_link_url", initial.code_link_url, "url or null");
-  optionalYaml(
-    "priority_override_reason",
-    initial.priority_override_reason,
-    "string or null",
-  );
   optionalYaml("deadline", initial.deadline, "ISO date string or null");
 
   lines.push(``);

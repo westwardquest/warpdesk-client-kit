@@ -7,9 +7,12 @@
  */
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import * as z from "zod/v4";
 import { loadWorkspaceConfig } from "./workspace-config";
 import { findWorkspaceRoot, writeTicketDraft } from "./ticket-draft";
+import { writeTicketSelectorFile } from "./ticket-selector-file";
 
 const PAT_ENV = "WARPDESK_PERSONAL_ACCESS_TOKEN";
 
@@ -173,10 +176,40 @@ mcpServer.registerTool(
     },
   },
   async ({ slug, ticketId }) => {
-    const path = `/api/w/${encodeURIComponent(slug)}/tickets/${encodeURIComponent(ticketId)}`;
+    const apiPath = `/api/w/${encodeURIComponent(slug)}/tickets/${encodeURIComponent(ticketId)}`;
     let r: { text: string; isError?: boolean };
     try {
-      r = await toolJson("GET", path);
+      r = await toolJson("GET", apiPath);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      r = { text: msg, isError: true };
+    }
+    return {
+      content: [{ type: "text" as const, text: r.text }],
+      ...(r.isError ? { isError: true as const } : {}),
+    };
+  },
+);
+
+mcpServer.registerTool(
+  "get_ticket_by_number",
+  {
+    description:
+      "Get one ticket by integer ticket_number with comments (GET .../tickets/by-number/{n}). Same JSON shape as get_ticket.",
+    inputSchema: {
+      slug: z.string().describe("Workspace slug"),
+      ticket_number: z
+        .number()
+        .int()
+        .min(1)
+        .describe("Workspace-scoped ticket number"),
+    },
+  },
+  async ({ slug, ticket_number }) => {
+    const apiPath = `/api/w/${encodeURIComponent(slug)}/tickets/by-number/${encodeURIComponent(String(ticket_number))}`;
+    let r: { text: string; isError?: boolean };
+    try {
+      r = await toolJson("GET", apiPath);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       r = { text: msg, isError: true };
@@ -192,22 +225,34 @@ mcpServer.registerTool(
   "list_priority_active_tickets",
   {
     description:
-      "List highest-priority active work-queue tickets (GET .../tickets?queue=1). Excludes closed; ordered by priority_score. Does not replace list_tickets for full history.",
+      "List active work-queue tickets (GET .../tickets?queue=1), ordered by priority_score. Optional band=N (with queue) returns only tickets within N points of the top active priority_score (same as app queue band).",
     inputSchema: {
       slug: z.string().describe("Workspace slug"),
       limit: z.number().int().min(1).max(100).optional(),
+      band: z
+        .number()
+        .int()
+        .min(0)
+        .max(1000)
+        .optional()
+        .describe(
+          "With default queue behaviour: pass with queue to narrow to top band (e.g. 10). Sent as band= query param.",
+        ),
     },
   },
-  async ({ slug, limit }) => {
+  async ({ slug, limit, band }) => {
     const q = new URLSearchParams();
     q.set("queue", "1");
     if (limit != null) {
       q.set("limit", String(limit));
     }
-    const path = `/api/w/${encodeURIComponent(slug)}/tickets?${q.toString()}`;
+    if (band != null) {
+      q.set("band", String(band));
+    }
+    const apiPath = `/api/w/${encodeURIComponent(slug)}/tickets?${q.toString()}`;
     let r: { text: string; isError?: boolean };
     try {
-      r = await toolJson("GET", path);
+      r = await toolJson("GET", apiPath);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       r = { text: msg, isError: true };
@@ -355,6 +400,163 @@ mcpServer.registerTool(
       content: [{ type: "text" as const, text: r.text }],
       ...(r.isError ? { isError: true as const } : {}),
     };
+  },
+);
+
+mcpServer.registerTool(
+  "create_ticket_selector_file",
+  {
+    description:
+      "Write a .ticketselector JSON file under .warpdesk/ticket-selectors/ for the WarpDesk Tools ticket selector editor (open in VS Code / Cursor).",
+    inputSchema: {
+      slug: z.string().describe("Workspace slug (must match warpdesk.config WORKSPACE_SLUG)"),
+      tickets: z
+        .array(
+          z.object({
+            id: z.string().uuid(),
+            ticket_number: z.number().int().min(1),
+            title: z.string(),
+            priority_score: z.number().nullable().optional(),
+          }),
+        )
+        .min(1),
+      active_index: z.number().int().min(0).optional(),
+    },
+  },
+  async (args) => {
+    const root = findWorkspaceRoot(process.cwd());
+    if (!root) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Could not find workspace root (warpdesk.config). Open the client workspace folder in Cursor.",
+          },
+        ],
+        isError: true,
+      };
+    }
+    let cfgSlug: string;
+    try {
+      ({ slug: cfgSlug } = loadWorkspaceConfig(root));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return {
+        content: [{ type: "text" as const, text: msg }],
+        isError: true,
+      };
+    }
+    if (cfgSlug !== args.slug) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `slug "${args.slug}" does not match warpdesk.config WORKSPACE_SLUG "${cfgSlug}".`,
+          },
+        ],
+        isError: true,
+      };
+    }
+    const r = writeTicketSelectorFile({
+      workspaceRoot: root,
+      slug: args.slug,
+      tickets: args.tickets.map((t) => ({
+        id: t.id,
+        ticket_number: t.ticket_number,
+        title: t.title,
+        priority_score: t.priority_score ?? null,
+      })),
+      active_index: args.active_index,
+    });
+    const text =
+      `Wrote ticket selector file.\n\n` +
+      `relativePath: ${r.relativePath}\n\n` +
+      `Open in WarpDesk Tools (custom editor for *.ticketselector).\n` +
+      `absolutePath: ${r.absolutePath}`;
+    return { content: [{ type: "text" as const, text }] };
+  },
+);
+
+mcpServer.registerTool(
+  "request_cursor_session",
+  {
+    description:
+      "Calls the WarpDesk Tools extension on localhost (POST /cursor-session/start|stop). Requires the extension running with an active workspace: dev clock must be running before start; stop ends Cursor clock without restarting dev.",
+    inputSchema: {
+      action: z
+        .enum(["start", "stop"])
+        .describe("start: end dev segment and begin Cursor segment (gates apply). stop: end Cursor segment only."),
+    },
+  },
+  async ({ action }) => {
+    const root = findWorkspaceRoot(process.cwd());
+    if (!root) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: "Could not find workspace root (warpdesk.config).",
+          },
+        ],
+        isError: true,
+      };
+    }
+    const ctrlPath = path.join(root, ".warpdesk", "extension-control.json");
+    if (!fs.existsSync(ctrlPath)) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              "WarpDesk Tools extension control file missing (.warpdesk/extension-control.json). Open the workspace in VS Code/Cursor with WarpDesk Tools activated.",
+          },
+        ],
+        isError: true,
+      };
+    }
+    let port: number;
+    let authToken: string;
+    try {
+      const raw = fs.readFileSync(ctrlPath, "utf8");
+      const j = JSON.parse(raw) as { port?: number; authToken?: string };
+      if (typeof j.port !== "number" || !j.authToken) {
+        throw new Error("Invalid extension-control.json");
+      }
+      port = j.port;
+      authToken = j.authToken;
+    } catch (e) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: e instanceof Error ? e.message : String(e),
+          },
+        ],
+        isError: true,
+      };
+    }
+    const pathname =
+      action === "start" ? "/cursor-session/start" : "/cursor-session/stop";
+    const url = `http://127.0.0.1:${port}${pathname}`;
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const text = await res.text();
+      return { content: [{ type: "text" as const, text }] };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Local extension request failed: ${msg}`,
+          },
+        ],
+        isError: true,
+      };
+    }
   },
 );
 

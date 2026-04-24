@@ -195,6 +195,8 @@ export async function applyTicketUpdateDraft(params) {
   }
 
   const parts = [];
+  /** @type {unknown} */
+  let patchResponseJson = null;
 
   if (Object.keys(patchBody).length > 0) {
     const pathname = `/api/w/${encodeURIComponent(slug)}/tickets/${encodeURIComponent(ticketId)}`;
@@ -202,6 +204,11 @@ export async function applyTicketUpdateDraft(params) {
     parts.push(`${r.status} PATCH ${pathname}\n${r.text}`);
     if (!r.ok) {
       return { ok: false, summary: parts.join("\n\n") };
+    }
+    try {
+      patchResponseJson = JSON.parse(r.text);
+    } catch {
+      patchResponseJson = null;
     }
   }
 
@@ -234,7 +241,23 @@ export async function applyTicketUpdateDraft(params) {
     );
   }
 
-  return { ok: true, summary: parts.join("\n\n") };
+  if (patchResponseJson == null) {
+    const pathname = `/api/w/${encodeURIComponent(slug)}/tickets/${encodeURIComponent(ticketId)}`;
+    const r = await apiFetch(baseUrl, token, "GET", pathname);
+    if (r.ok) {
+      try {
+        patchResponseJson = JSON.parse(r.text);
+      } catch {
+        patchResponseJson = null;
+      }
+    }
+  }
+
+  return {
+    ok: true,
+    summary: parts.join("\n\n"),
+    json: patchResponseJson,
+  };
 }
 
 /**

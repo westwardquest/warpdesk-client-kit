@@ -29,7 +29,31 @@ Other paths under **`knowledge/`** default to internal until classified. Prefer 
 
 1. **Create and check out** a branch whose name includes the **ticket number**, e.g. **`ticket-42`** or **`feature/ticket-42`** (stay consistent within the team). Do this **before** you commit work for that ticket. A conventional commit prefix on whatever branch you happen to be on (e.g. `feat(ticket#42): …` on **`main`**) is **not** a substitute—ticket work belongs on a **dedicated branch**, not only in the message.
 2. After pushing the branch or opening a PR, set the ticket’s **`code_link_url`** in the app, or put it in a **draft** (`draft_ticket_update` / YAML) and have a human **apply** it in **warpdesk-tools** (or the app / raw HTTP API), or use **`npm run warpdesk:ticket:patch`** / **`PATCH`** from automation—so work is traceable.
-3. Use **`list_priority_active_tickets`** (MCP) or **`npm run warpdesk:tickets:queue`** to see the highest-priority **active** queue without listing every ticket.
+3. Use **`list_priority_active_tickets`** (MCP) or **`npm run warpdesk:tickets:queue`** to see the highest-priority **active** queue without listing every ticket. Pass **`band`** (e.g. `10`) on the MCP tool to match **`GET …/tickets?queue=1&band=10`** (tickets within that many **priority_score** points of the top active ticket).
+4. Use **`get_ticket_by_number`** (MCP) or **`GET …/tickets/by-number/{n}`** when you know the workspace ticket number instead of the UUID.
+
+---
+
+## Time clocks, Cursor session, and ticket selector (WarpDesk Tools)
+
+When **`warpdesk-tools`** is installed and the workspace folder is open in VS Code / Cursor:
+
+1. **Set active ticket** — Command **WarpDesk: Set active ticket** (UUID + number) so clocks know which ticket to log against. Ticket numbers can only be changed while **no** clock is running.
+2. **Dev clock** — **WarpDesk: Start dev clock** / **Stop dev clock**. Only one of **dev** or **Cursor** clock runs at a time. The extension can **auto-pause** dev after configurable idle time (`warpdesk-tools.clockIdleMinutes`).
+3. **Cursor clock** — Do **not** flip clocks from the agent alone. Use MCP **`request_cursor_session`**: **`action: start`** calls the extension on **localhost** (reads **`.warpdesk/extension-control.json`**). **Requires the dev clock to be running** and the current **git branch name to include the ticket number**. Start ends the open dev segment and begins a **Cursor** segment. **`action: stop`** ends the Cursor segment and returns to **idle** — it does **not** auto-restart the dev clock (resume dev explicitly when ready).
+4. **Ticket selector file** — MCP **`create_ticket_selector_file`** writes **`.warpdesk/ticket-selectors/*.ticketselector`** (JSON). Open it with the **WarpDesk ticket selector** editor: read-only ticket + comments, **Refresh**, **Start/Resume** (assign self, `cooking`, branch `ticket-<n>`, optional `code_link_url`, start dev clock), **Pause** (stop dev; stop Cursor first if needed). Footer **hex** colours follow the same pastel rules as the web app (see framework `lib/tickets/ticket-title-pastel.ts` — keep the extension copy in sync).
+5. **Failed clock POSTs** — The extension queues segments under **`.warpdesk/clock-pending.jsonl`** and retries on the next successful stop.
+
+**Primary information source:** prefer the knowledge repo **`knowledge/business/`** and **`knowledge/technical/`** for customer-specific process. Use **web search** only when the user asks or the knowledge base is insufficient.
+
+### MAIN ACTIONS (quick reference)
+
+| Goal | Steps |
+| ---- | ----- |
+| **Fetch ticket data** | MCP **`list_tickets`**, **`list_priority_active_tickets`** (optional `band`), **`get_ticket`**, **`get_ticket_by_number`**, **`search_tickets`**. Optionally **`create_ticket_selector_file`** then open **`.ticketselector`** in WarpDesk Tools. |
+| **Code / doc change** | **`request_cursor_session`** `start` → implement → update knowledge if behaviour changed → **`request_cursor_session`** `stop`. |
+| **Deployment** | Follow **`docs/deployment_strategy.md`** at the root of the WarpDesk **framework** monorepo (or mirror the checklist into **knowledge/technical/** for your team). |
+| **Ticket field / comment change** | **`draft_ticket_update`** → human **Confirm** in **warpdesk-tools** (or text-editor commands). |
 
 ---
 
@@ -55,7 +79,7 @@ Summarise **ticket updates** and anything else you intend to do on the remote. L
 
 ## Tickets — MCP first (read this first)
 
-**Prefer the `warpdesk-tickets` MCP tools** whenever they appear in your tool list (`list_tickets`, `list_priority_active_tickets`, `get_ticket`, `draft_ticket_update`, `search_tickets`, `bootstrap_workspace`; plus **`update_ticket`** / **`add_ticket_comment`** only if **`WARPDESK_MCP_ALLOW_DIRECT_UPDATES=1`**). They call the same HTTP API as the app. For **mutations**, use **`draft_ticket_update`** only to write the draft file; tell the user to **Confirm** in **warpdesk-tools** (do not apply via tools or terminal).
+**Prefer the `warpdesk-tickets` MCP tools** whenever they appear in your tool list (`list_tickets`, `list_priority_active_tickets`, `get_ticket`, `get_ticket_by_number`, `draft_ticket_update`, `search_tickets`, `create_ticket_selector_file`, `request_cursor_session`, `bootstrap_workspace`; plus **`update_ticket`** / **`add_ticket_comment`** only if **`WARPDESK_MCP_ALLOW_DIRECT_UPDATES=1`**). They call the same HTTP API as the app. For **mutations**, use **`draft_ticket_update`** only to write the draft file; tell the user to **Confirm** in **warpdesk-tools** (do not apply via tools or terminal).
 
 **If MCP tools are not available** (tools not listed, or calls fail after fixing auth), use the **Shell** tool from the **workspace repo root** and run the npm scripts below—the CLI uses the same API and **`warpdesk.config`** / **`.cursor/mcp.json`** token.
 

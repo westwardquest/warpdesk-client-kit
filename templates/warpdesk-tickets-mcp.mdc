@@ -8,7 +8,7 @@ alwaysApply: true
 
 Quickstart writes **`.cursor/mcp.json`** but **cannot** turn the server on in Cursor’s UI.
 
-If ticket MCP tools (`list_tickets`, `get_ticket`, `request_cursor_session`, etc.) do not appear after restart, tell the user to open **Cursor Settings → Features → Model Context Protocol** and **enable the `warpdesk-tickets` server** (toggle on). New or project-defined servers sometimes start disabled per workspace.
+If ticket MCP tools (`list_priority_active_tickets`, `get_ticket`, `request_cursor_session`, etc.) do not appear after restart, tell the user to open **Cursor Settings → Features → Model Context Protocol** and **enable the `warpdesk-tickets` server** (toggle on). New or project-defined servers sometimes start disabled per workspace.
 
 If the MCP log shows **Cannot find module** under the **workspace root** `node_modules/tsx`, the fix is **full paths** in `mcp.json` `args` (see latest quickstart); re-run **`npm run quickstart:customer -- --client-root <this-workspace>`** from the framework repo.
 

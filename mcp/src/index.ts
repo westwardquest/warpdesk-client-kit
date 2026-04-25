@@ -152,53 +152,6 @@ mcpServer.registerTool(
 );
 
 mcpServer.registerTool(
-  "list_tickets",
-  {
-    description:
-      "List tickets in a workspace (same as GET /api/w/{slug}/tickets with include_comments=1). Each ticket may include up to 30 comments (500 total cap per response). On success, merges ticket rows plus ticket/comment snapshots into .warpdesk/tickets.ticketselector (priority order, cumulative dev/Cursor times) for the WarpDesk Tools ticket selector.",
-    inputSchema: {
-      slug: z.string().describe("Workspace slug"),
-      limit: z.number().int().min(1).max(100).optional(),
-      status: z
-        .enum([
-          "posted",
-          "heeded",
-          "cooking",
-          "blocked",
-          "needs_client",
-          "client_responded",
-          "closed",
-        ])
-        .optional(),
-    },
-  },
-  async ({ slug, limit, status }) => {
-    const q = new URLSearchParams();
-    if (limit != null) {
-      q.set("limit", String(limit));
-    }
-    if (status) {
-      q.set("status", String(status));
-    }
-    q.set("include_comments", "1");
-    const qs = q.toString();
-    const path = `/api/w/${encodeURIComponent(slug)}/tickets${qs ? `?${qs}` : ""}`;
-    let r: { text: string; isError?: boolean };
-    try {
-      r = await toolJson("GET", path);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      r = { text: msg, isError: true };
-    }
-    const text = await maybeAppendTicketSelectorHint(slug, r, "list");
-    return {
-      content: [{ type: "text" as const, text }],
-      ...(r.isError ? { isError: true as const } : {}),
-    };
-  },
-);
-
-mcpServer.registerTool(
   "get_ticket",
   {
     description:
@@ -256,7 +209,7 @@ mcpServer.registerTool(
                 '- slug: workspace slug (example: "duck-island-icecream")',
                 "- ticket_number: integer ticket number (example: 42)",
                 "",
-                "Tip: if you do not have the number, call list_priority_active_tickets or list_tickets first.",
+                "Tip: if you do not have the number, call list_priority_active_tickets or search_tickets first.",
               ].join("\n"),
           },
         ],
@@ -283,7 +236,7 @@ mcpServer.registerTool(
   "list_priority_active_tickets",
   {
     description:
-      "List priority work-queue tickets (GET .../tickets?queue=1&include_comments=1), ordered by priority_score. The server queue **excludes `needs_client`** (use `list_tickets` for those). Optional band=N (with queue) returns only tickets within N points of the top priority_score in that set. On success, merges ticket rows plus ticket/comment snapshots into .warpdesk/tickets.ticketselector.",
+      "List priority work-queue tickets (GET .../tickets?queue=1&include_comments=1), ordered by priority_score. The server queue **excludes `needs_client`**. For other statuses or broader lists, use **`search_tickets`** or the app/CLI. Optional band=N (with queue) returns only tickets within N points of the top priority_score in that set. On success, merges ticket rows plus ticket/comment snapshots into .warpdesk/tickets.ticketselector.",
     inputSchema: {
       slug: z.string().describe("Workspace slug"),
       limit: z.number().int().min(1).max(100).optional(),

@@ -283,7 +283,7 @@ mcpServer.registerTool(
   "list_priority_active_tickets",
   {
     description:
-      "List active work-queue tickets (GET .../tickets?queue=1&include_comments=1), ordered by priority_score. Optional band=N (with queue) returns only tickets within N points of the top active priority_score (same as app queue band). Comments (capped per API) appear in the JSON tool output only; they are not merged into .warpdesk/tickets.ticketselector. On success, merges ticket rows into that selector file.",
+      "List priority work-queue tickets (GET .../tickets?queue=1&include_comments=1), ordered by priority_score. The server queue **excludes `needs_client`** (use `list_tickets` for those). Optional band=N (with queue) returns only tickets within N points of the top priority_score in that set. Comments (capped per API) appear in the JSON tool output only; they are not merged into .warpdesk/tickets.ticketselector. On success, merges ticket rows into that selector file.",
     inputSchema: {
       slug: z.string().describe("Workspace slug"),
       limit: z.number().int().min(1).max(100).optional(),

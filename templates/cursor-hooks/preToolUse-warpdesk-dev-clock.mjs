@@ -13,6 +13,7 @@
  *   set WARPDESK_HOOK_SHELL_AMBIGUOUS=deny to require the clock for them too.
  * - WARPDESK_HOOK_ALLOW_CURSOR_PHASE=1 — treat **cursor** phase like **dev**.
  * - WARPDESK_HOOK_PERMISSION — `deny` | `ask` when blocked (default `deny`).
+ * - WARPDESK_HOOK_DEBUG=1 — log JSON lines to **stderr** (see Cursor Hooks output) with reason codes; does not change stdout.
  *
  * Requires **Node** on PATH (Windows: install Node and restart Cursor).
  */
@@ -42,6 +43,36 @@ function out(obj) {
   process.stdout.write(`${JSON.stringify(obj)}\n`);
 }
 
+function debugEnabled() {
+  const v = process.env.WARPDESK_HOOK_DEBUG;
+  if (v == null || v === "") return false;
+  return v === "1" || v === "true" || v.toLowerCase() === "yes";
+}
+
+/**
+ * @param {string} event
+ * @param {Record<string, unknown>} [data]
+ */
+function dbg(event, data) {
+  if (!debugEnabled()) return;
+  const row = { event, ...data, hookPid: process.pid, hookCwd: process.cwd() };
+  process.stderr.write(
+    `[warpdesk-dev-clock-hook] ${JSON.stringify(row)}\n`,
+  );
+}
+
+/**
+ * @param {Set<string>} set
+ * @param {string} name
+ */
+function setHasI(set, name) {
+  if (set.has(name)) return true;
+  for (const t of set) {
+    if (t.toLowerCase() === name.toLowerCase()) return true;
+  }
+  return false;
+}
+
 function parseEditTools() {
   const raw = process.env.WARPDESK_HOOK_EDIT_TOOLS;
   if (!raw || !raw.trim()) return DEFAULT_EDIT_TOOLS;
@@ -68,11 +99,19 @@ function ambiguousIsDeny() {
  * @returns {string}
  */
 function normalizeCursorPath(p) {
-  const m = p.match(/^\/([a-zA-Z]):\/?(.*)$/);
+  const s = String(p).trim();
+  const fileUn = s.match(/^file:\/\/\/\/?([a-zA-Z]):\/?(.*)$/i);
+  if (fileUn) {
+    return path.join(
+      `${fileUn[1].toUpperCase()}:`,
+      ...fileUn[2].split(/[/\\]+/).filter(Boolean),
+    );
+  }
+  const m = s.match(/^\/([a-zA-Z]):\/?(.*)$/);
   if (m) {
     return path.join(`${m[1].toUpperCase()}:`, ...m[2].split("/").filter(Boolean));
   }
-  return p;
+  return s;
 }
 
 /**
@@ -302,26 +341,43 @@ function denyClock(permission) {
 function main() {
   const editTools = parseEditTools();
   const gateShell = gateShellEnabled();
+  const editToolsList = process.env.WARPDESK_HOOK_EDIT_TOOLS
+    ? [...editTools]
+    : null;
+
   let inputRaw = "";
   try {
     inputRaw = fs.readFileSync(0, "utf8");
-  } catch {
+  } catch (e) {
+    dbg("allow", {
+      reason: "stdin_read_failed",
+      err: e instanceof Error ? e.message : String(e),
+    });
     out({ permission: "allow" });
     return;
   }
 
   let payload;
   try {
-    payload = inputRaw ? JSON.parse(inputRaw) : {};
-  } catch {
-    out({ permission: "allow" });
+    const sanitized = inputRaw.replace(/^\uFEFF/, "").trim();
+    payload = sanitized ? JSON.parse(sanitized) : {};
+  } catch (e) {
+    dbg("deny", { reason: "stdin_json_parse_failed", err: String(e) });
+    out({
+      permission: "deny",
+      user_message:
+        "WarpDesk hook failed to parse hook input JSON (BOM/format issue). Blocking edits until hook is healthy.",
+      agent_message:
+        "Hook parse failed; do not proceed with edits until preToolUse can parse JSON input.",
+    });
     return;
   }
 
   const toolName =
-    typeof payload.tool_name === "string" ? payload.tool_name : "";
+    typeof payload.tool_name === "string" ? payload.tool_name.trim() : "";
 
   if (!toolName) {
+    dbg("allow", { reason: "empty_tool_name" });
     out({ permission: "allow" });
     return;
   }
@@ -329,8 +385,17 @@ function main() {
   const startDir = resolveStartDir(
     /** @type {Record<string, unknown>} */ (payload),
   );
+  const configProbe = path.join(startDir, "warpdesk.config");
+  const configExists = fs.existsSync(configProbe);
   const workspaceRoot = findWorkspaceRoot(startDir);
   if (!workspaceRoot) {
+    dbg("allow", {
+      reason: "no_warpdesk_config_in_walk",
+      startDir,
+      configExistsAtStartDir: configExists,
+      warpdesk_in_parent:
+        "walk upward until warpdesk.config or root — null means allow (fail open)",
+    });
     out({ permission: "allow" });
     return;
   }
@@ -342,50 +407,76 @@ function main() {
   const permRaw = (process.env.WARPDESK_HOOK_PERMISSION || "deny").toLowerCase();
   const permBlock = permRaw === "ask" ? "ask" : "deny";
 
-  if (toolName === "Shell" && gateShell) {
+  const isShell = toolName.toLowerCase() === "shell";
+  if (isShell && gateShell) {
     const toolInput = payload.tool_input;
     const command =
       toolInput && typeof toolInput === "object" && typeof toolInput.command === "string"
         ? toolInput.command
         : "";
     if (!command) {
+      dbg("allow", { reason: "shell_empty_command" });
       out({ permission: "allow" });
       return;
     }
     const kind = shellCommandKind(command);
     if (kind === "read" || (kind === "ambiguous" && !ambiguousIsDeny())) {
+      dbg("allow", {
+        reason: "shell_kind_allows",
+        toolName,
+        shellKind: kind,
+      });
       out({ permission: "allow" });
       return;
     }
     if (kind === "ambiguous" && ambiguousIsDeny() && clockOk) {
+      dbg("allow", { reason: "shell_ambiguous_clock_ok" });
       out({ permission: "allow" });
       return;
     }
     if (clockOk) {
+      dbg("allow", { reason: "shell_clock_ok", toolName, phase });
       out({ permission: "allow" });
       return;
     }
+    dbg("deny", { reason: "shell_needs_clock", toolName, phase, kind });
     out(denyClock(permBlock));
     return;
   }
 
-  if (!editTools.has(toolName)) {
+  if (!setHasI(editTools, toolName)) {
+    dbg("allow", {
+      reason: "tool_not_in_edit_gate_set",
+      toolName,
+      toolNameCodePoints: [...toolName].map((c) => c.charCodeAt(0)).join(","),
+      editToolsEnv: process.env.WARPDESK_HOOK_EDIT_TOOLS ?? "(default set)",
+      editToolsResolved: editToolsList ?? [...DEFAULT_EDIT_TOOLS],
+    });
     out({ permission: "allow" });
     return;
   }
 
   const toolInput = payload.tool_input;
   const target = primaryTargetPath(toolInput);
-  if (target && isExemptPath(workspaceRoot, target)) {
+  const exempt = Boolean(target && isExemptPath(workspaceRoot, target));
+  if (exempt) {
+    dbg("allow", { reason: "exempt_path", toolName, target, phase });
     out({ permission: "allow" });
     return;
   }
 
   if (clockOk) {
+    dbg("allow", { reason: "clock_ok", toolName, phase, target, exempt: false });
     out({ permission: "allow" });
     return;
   }
 
+  dbg("deny", {
+    reason: "edit_needs_dev_clock",
+    toolName,
+    phase,
+    target,
+  });
   out(denyClock(permBlock));
 }
 

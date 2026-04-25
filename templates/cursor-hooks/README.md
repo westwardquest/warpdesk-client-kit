@@ -17,5 +17,8 @@ Optional **project** hook so the agent cannot use substantive **write / edit** t
 - **Allows** path-targeted edits under **`.warpdesk/`**, **`vendor/`**, and **`knowledge/`** (for **`Write` / StrReplace–style tools) without requiring the clock — **Shell** is not path-parsed the same way; use exemptions above at your own risk.
 - **`WARPDESK_HOOK_ALLOW_CURSOR_PHASE=1`**: also allow when **`phase`** is **`cursor`** (agent-driven Cursor segment).
 - **`WARPDESK_HOOK_PERMISSION`**: **`deny`** (default) or **`ask`** when the clock is idle.
+- **`WARPDESK_HOOK_DEBUG=1`**: log JSON lines to **stderr** (Hooks output in Cursor) with **`reason`** codes (`tool_not_in_edit_gate_set`, `no_warpdesk_config_in_walk`, `exempt_path`, `edit_needs_dev_clock`, etc.). Tool names are matched **case-insensitively** (`write` vs `Write`).
+- Input JSON is parsed after removing a leading UTF-8 BOM (`\uFEFF`). If parsing still fails, the hook returns **`deny`** to avoid fail-open writes.
+- The example `hooks.warpdesk-dev-clock.example.json` sets **`failClosed: true`** so timeouts/crashes/error output from this hook do not silently allow edits.
 
 See **`AGENTS.md`** in this kit for workflow context (dev vs Cursor clock, **`request_cursor_session`**).

@@ -4,7 +4,8 @@
     "preToolUse": [
       {
         "command": "node ./vendor/warpdesk-client-kit/templates/cursor-hooks/preToolUse-warpdesk-dev-clock.mjs",
-        "timeout": 5
+        "timeout": 5,
+        "failClosed": true
       }
     ]
   }

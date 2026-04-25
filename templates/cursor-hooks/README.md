@@ -10,10 +10,11 @@ Optional **project** hook so the agent cannot use substantive **write / edit** t
 
 ## Behaviour
 
-- Resolves workspace root by walking up from hook **`cwd`** until **`warpdesk.config`** exists.
+- Resolves workspace root from hook **`cwd`**, or **`workspace_roots[0]`** when **`cwd`** is empty (Cursor often sends roots only), by walking up until **`warpdesk.config`** exists.
 - If no config is found, the hook **allows** (fail open for non–WarpDesk trees).
 - Gates tool names in **`WARPDESK_HOOK_EDIT_TOOLS`** (comma-separated); default includes **`Write`**, **`StrReplace`**, and other common edit aliases — extend if your Cursor version uses different names.
-- **Allows** edits under **`.warpdesk/`**, **`vendor/`**, and **`knowledge/`** (and paths containing **`/knowledge/`**) without requiring the clock.
+- **`Shell` (optional, on by default):** set **`WARPDESK_HOOK_GATE_SHELL=0`** to disable. When enabled, **read-only** commands (e.g. **`git diff`**, **`git status`**, many **`npm run test` / `npx vitest`** patterns) are allowed without the clock. **Suspicious** commands (redirection to a file, **`git commit`**, **`npm install`**, **`copy`/`move`**, **`npx`** not matching a small allowlist, arbitrary **`npm run`**, **`node`**, etc.) require the same dev-clock phase as file-edit tools. **Ambiguous** commands default to **allow**; set **`WARPDESK_HOOK_SHELL_AMBIGUOUS=deny`** to require the clock for those too. Heuristics are not a full sandbox; review tool output if needed.
+- **Allows** path-targeted edits under **`.warpdesk/`**, **`vendor/`**, and **`knowledge/`** (for **`Write` / StrReplace–style tools) without requiring the clock — **Shell** is not path-parsed the same way; use exemptions above at your own risk.
 - **`WARPDESK_HOOK_ALLOW_CURSOR_PHASE=1`**: also allow when **`phase`** is **`cursor`** (agent-driven Cursor segment).
 - **`WARPDESK_HOOK_PERMISSION`**: **`deny`** (default) or **`ask`** when the clock is idle.
 

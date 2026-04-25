@@ -232,6 +232,17 @@ function primaryTargetPath(toolInput) {
   return typeof cand === "string" && cand.trim() ? cand.trim() : null;
 }
 
+const CLOCK_LOCAL_STATE_BASENAME = "clock-local-state.json";
+
+/**
+ * @param {string} norm workspace-relative path with `/` separators
+ * @returns {boolean} true if this is the local clock file (not eligible for the usual `.warpdesk/` exemption)
+ */
+function isClockLocalStatePath(norm) {
+  if (!norm.endsWith(CLOCK_LOCAL_STATE_BASENAME)) return false;
+  return norm.split("/").includes(".warpdesk");
+}
+
 function isExemptPath(workspaceRoot, filePath) {
   if (!filePath) return false;
   const absFile = path.resolve(filePath);
@@ -239,6 +250,7 @@ function isExemptPath(workspaceRoot, filePath) {
   const rel = path.relative(absRoot, absFile);
   if (rel.startsWith("..") || rel === "") return false;
   const norm = rel.split(path.sep).join("/");
+  if (isClockLocalStatePath(norm)) return false;
   if (norm === ".warpdesk" || norm.startsWith(".warpdesk/")) return true;
   if (norm === "vendor" || norm.startsWith("vendor/")) return true;
   if (norm === "knowledge" || norm.startsWith("knowledge/")) return true;
@@ -256,6 +268,7 @@ function shellCommandKind(cmd) {
 
   if (line.startsWith("REM ") || line.startsWith("::") || line.startsWith("#"))
     return "read";
+  if (nodeShellLooksLikeWrite(line)) return "write";
 
   const segments = line.split(/\s*;\s*|\s+&&\s+|\n+/);
   let worst = /** @type {0|1|2} */ (0);
@@ -272,6 +285,36 @@ function shellCommandKind(cmd) {
   if (worst === 2) return "write";
   if (worst === 1) return "ambiguous";
   return "read";
+}
+
+/**
+ * `node -e` / `node --eval` one-liners are otherwise **ambiguous** (allowed without
+ * the clock by default). If the **same shell segment** contains obvious fs write APIs,
+ * treat as **write** so the dev clock (and ticket when required) still applies.
+ * @param {string} seg one shell segment (includes quoted code from the agent)
+ * @returns {boolean}
+ */
+function nodeShellLooksLikeWrite(seg) {
+  if (!/^node(?:\.exe)?\b/i.test(seg)) return false;
+  if (
+    /\b(?:writeFile|appendFile|outputFile|createWriteStream|copyFile|rename|rmdir|rm|unlink|truncate|mkdir)(?:Sync)?\s*\(/i.test(
+      seg,
+    )
+  ) {
+    return true;
+  }
+  if (/\bfs\.(?:append|write|copy|rename|rm|unlink|mkdir|createWriteStream)\b/i.test(seg))
+    return true;
+  if (/\bfs\.promises\.(?:writeFile|appendFile|copyFile)\b/i.test(seg)) return true;
+  if (
+    /clock-local-state\.json/i.test(seg) &&
+    /\b(?:writeFile|appendFile|outputFile|createWriteStream|write|append|copyFile|rename|unlink|rm|mkdir)\b/i.test(
+      seg,
+    )
+  ) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -321,7 +364,10 @@ function oneShellSegmentKind(seg) {
   if (/\b(?:rmdir|New-Item|Remove-Item|Copy-Item|Move-Item)\b/i.test(seg))
     return "write";
 
-  if (/^node\b/i.test(seg)) return "ambiguous";
+  if (/^node(?:\.exe)?\b/i.test(seg)) {
+    if (nodeShellLooksLikeWrite(seg)) return "write";
+    return "ambiguous";
+  }
 
   if (/\b(?:npx|npm exec)\b/i.test(seg)) return "ambiguous";
 

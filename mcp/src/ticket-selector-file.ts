@@ -74,6 +74,7 @@ function normalizeIncoming(row: unknown): IncomingTicketRow | null {
     priority_score = r.priority_score;
   }
   const status = typeof r.status === "string" ? r.status : undefined;
+  if (status === "closed") return null;
   const type = typeof r.type === "string" ? r.type : undefined;
   return { id, ticket_number, title, priority_score, status, type };
 }
@@ -301,7 +302,7 @@ export async function syncCanonicalTicketSelector(params: {
     byId.set(row.id, merged);
   }
 
-  let mergedList = Array.from(byId.values());
+  let mergedList = Array.from(byId.values()).filter((t) => t.status !== "closed");
   mergedList = sortTicketsByPriority(mergedList);
   const active_index = resolveActiveIndexAfterSort(previous, mergedList);
 

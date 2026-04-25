@@ -31,6 +31,7 @@ Other paths under **`knowledge/`** default to internal until classified. Prefer 
 2. After pushing the branch or opening a PR, set the ticket’s **`code_link_url`** in the app, or put it in a **draft** (`draft_ticket_update` / YAML) and have a human **apply** it in **warpdesk-tools** (or the app / raw HTTP API), or use **`npm run warpdesk:ticket:patch`** / **`PATCH`** from automation—so work is traceable.
 3. Use **`list_priority_active_tickets`** (MCP) or **`npm run warpdesk:tickets:queue`** to see the highest-priority **active** queue without listing every ticket. Pass **`band`** (e.g. `10`) on the MCP tool to match **`GET …/tickets?queue=1&band=10`** (tickets within that many **priority_score** points of the top active ticket).
 4. Use **`get_ticket_by_number`** (MCP) or **`GET …/tickets/by-number/{n}`** when you know the workspace ticket number instead of the UUID.
+5. Status intent reminder: use **`needs_client`** when code changes are ready for client validation/feedback, use **`client_responded`** when the client replies, and move back to **`cooking`** once developers resume implementation.
 
 ---
 
@@ -45,6 +46,7 @@ When **`warpdesk-tools`** is installed and the workspace folder is open in VS Co
 5. **Failed clock POSTs** — The extension queues segments under **`.warpdesk/clock-pending.jsonl`** and retries on the next successful stop.
 
 6. **Optional hard gate (Cursor hooks)** — Rules alone cannot stop **`Write`** / edit tools or **Shell** bypasses. Copy the **preToolUse** template from **`vendor/warpdesk-client-kit/templates/cursor-hooks/`** into **`.cursor/hooks.json`** (see **`README.md`** there): it reads **`.warpdesk/clock-local-state.json`** and can **`deny`** or **`ask`** when **`phase`** is not **`dev`** (optional env to allow **`cursor`**). By default it also heuristically gates **`Shell`** (read-only patterns like **`git diff`** stay allowed; set **`WARPDESK_HOOK_GATE_SHELL=0`** to turn that off). Requires **Node on PATH**; path-targeted exemptions apply to **Write**-style tools, not every shell.
+   - Quick verification checklist in a workspace: confirm **`.cursor/hooks.json`** includes the preToolUse command + **`failClosed: true`**, confirm the referenced script exists under **`vendor/warpdesk-client-kit/templates/cursor-hooks/`**, and confirm **`.warpdesk/clock-local-state.json`** updates when starting/stopping dev clock.
 
 **Primary information source:** prefer the knowledge repo **`knowledge/business/`** and **`knowledge/technical/`** for customer-specific process. Use **web search** only when the user asks or the knowledge base is insufficient.
 

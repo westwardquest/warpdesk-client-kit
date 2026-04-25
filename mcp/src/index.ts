@@ -165,7 +165,7 @@ mcpServer.registerTool(
           "heeded",
           "cooking",
           "blocked",
-          "waiting_on_client",
+          "needs_client",
           "client_responded",
           "closed",
         ])
@@ -231,15 +231,38 @@ mcpServer.registerTool(
     description:
       "Get one ticket by integer ticket_number with comments (GET .../tickets/by-number/{n}). Same JSON shape as get_ticket. On success, merges into .warpdesk/tickets.ticketselector.",
     inputSchema: {
-      slug: z.string().describe("Workspace slug"),
+      slug: z
+        .string()
+        .optional()
+        .describe("Workspace slug (optional; if missing, tool returns guidance)"),
       ticket_number: z
         .number()
         .int()
         .min(1)
+        .optional()
         .describe("Workspace-scoped ticket number"),
     },
   },
   async ({ slug, ticket_number }) => {
+    if (!slug || typeof slug !== "string" || !slug.trim() || ticket_number == null) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text:
+              [
+                "Missing required args for get_ticket_by_number.",
+                "Ask the user to start/select a ticket context first, then call with:",
+                '- slug: workspace slug (example: "duck-island-icecream")',
+                "- ticket_number: integer ticket number (example: 42)",
+                "",
+                "Tip: if you do not have the number, call list_priority_active_tickets or list_tickets first.",
+              ].join("\n"),
+          },
+        ],
+        isError: true as const,
+      };
+    }
     const apiPath = `/api/w/${encodeURIComponent(slug)}/tickets/by-number/${encodeURIComponent(String(ticket_number))}`;
     let r: { text: string; isError?: boolean };
     try {
@@ -311,7 +334,7 @@ const ticketPatchSchema = {
       "heeded",
       "cooking",
       "blocked",
-      "waiting_on_client",
+      "needs_client",
       "client_responded",
       "closed",
     ])
@@ -542,7 +565,7 @@ mcpServer.registerTool(
           "heeded",
           "cooking",
           "blocked",
-          "waiting_on_client",
+          "needs_client",
           "client_responded",
           "closed",
         ])

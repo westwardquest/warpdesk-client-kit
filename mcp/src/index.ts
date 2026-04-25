@@ -155,7 +155,7 @@ mcpServer.registerTool(
   "list_tickets",
   {
     description:
-      "List tickets in a workspace (same as GET /api/w/{slug}/tickets). On success, merges results into the single workspace file .warpdesk/tickets.ticketselector (priority order, cumulative dev/Cursor times) for the WarpDesk Tools ticket selector.",
+      "List tickets in a workspace (same as GET /api/w/{slug}/tickets with include_comments=1). Each ticket may include up to 30 comments (500 total cap per response); comments are not written into .warpdesk/tickets.ticketselector (selector merge strips them). On success, merges ticket rows into that file (priority order, cumulative dev/Cursor times) for the WarpDesk Tools ticket selector.",
     inputSchema: {
       slug: z.string().describe("Workspace slug"),
       limit: z.number().int().min(1).max(100).optional(),
@@ -180,6 +180,7 @@ mcpServer.registerTool(
     if (status) {
       q.set("status", String(status));
     }
+    q.set("include_comments", "1");
     const qs = q.toString();
     const path = `/api/w/${encodeURIComponent(slug)}/tickets${qs ? `?${qs}` : ""}`;
     let r: { text: string; isError?: boolean };
@@ -259,7 +260,7 @@ mcpServer.registerTool(
   "list_priority_active_tickets",
   {
     description:
-      "List active work-queue tickets (GET .../tickets?queue=1), ordered by priority_score. Optional band=N (with queue) returns only tickets within N points of the top active priority_score (same as app queue band). On success, merges into .warpdesk/tickets.ticketselector.",
+      "List active work-queue tickets (GET .../tickets?queue=1&include_comments=1), ordered by priority_score. Optional band=N (with queue) returns only tickets within N points of the top active priority_score (same as app queue band). Comments (capped per API) appear in the JSON tool output only; they are not merged into .warpdesk/tickets.ticketselector. On success, merges ticket rows into that selector file.",
     inputSchema: {
       slug: z.string().describe("Workspace slug"),
       limit: z.number().int().min(1).max(100).optional(),
@@ -283,6 +284,7 @@ mcpServer.registerTool(
     if (band != null) {
       q.set("band", String(band));
     }
+    q.set("include_comments", "1");
     const apiPath = `/api/w/${encodeURIComponent(slug)}/tickets?${q.toString()}`;
     let r: { text: string; isError?: boolean };
     try {

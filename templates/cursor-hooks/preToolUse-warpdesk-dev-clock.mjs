@@ -12,6 +12,7 @@
  *   `npm test`, `npx vitest`) are allowed without the clock. **Ambiguous** commands default to allow;
  *   set WARPDESK_HOOK_SHELL_AMBIGUOUS=deny to require the clock for them too.
  * - WARPDESK_HOOK_ALLOW_CURSOR_PHASE=1 — treat **cursor** phase like **dev**.
+ * - WARPDESK_HOOK_REQUIRE_CURSOR_PHASE=0 — disable strict mode that requires **cursor** for gated writes (default: strict mode on, so **dev** alone is not enough for agent edits).
  * - WARPDESK_HOOK_ALLOW_NO_TICKET_ID=1 — allow **dev** and **cursor** even when **ticketId** is empty in clock state (default: require a non-empty **ticketId** whenever phase is dev or cursor).
  * - WARPDESK_HOOK_PERMISSION — `deny` | `ask` when blocked (default `deny`).
  * - WARPDESK_HOOK_DEBUG=1 — log JSON lines to **stderr** (see Cursor Hooks output) with reason codes; does not change stdout.
@@ -199,6 +200,12 @@ function allowNoTicketIdBypass() {
   return v === "1" || v === "true" || v.toLowerCase() === "yes";
 }
 
+function requireCursorPhase() {
+  const v = process.env.WARPDESK_HOOK_REQUIRE_CURSOR_PHASE;
+  if (v == null || v === "") return true;
+  return !(v === "0" || v === "false" || v.toLowerCase() === "no");
+}
+
 /**
  * @param {string} phase
  * @param {string | null} ticketId
@@ -206,7 +213,9 @@ function allowNoTicketIdBypass() {
  * @returns {{ allow: boolean; reason: "ok" | "phase" | "no_ticket" }}
  */
 function evaluateClockGate(phase, ticketId, allowCursor) {
-  const phaseOk = phase === "dev" || (allowCursor && phase === "cursor");
+  const phaseOk = requireCursorPhase()
+    ? phase === "cursor"
+    : phase === "dev" || (allowCursor && phase === "cursor");
   if (!phaseOk) {
     return { allow: false, reason: "phase" };
   }
@@ -433,12 +442,12 @@ function isNpxReadSafe(seg) {
 
 function denyClock(permission) {
   const msg =
-    "WarpDesk dev clock is not running (see .warpdesk/clock-local-state.json). Start dev on the active ticket in WarpDesk Tools / the ticket selector before agent file edits, or set WARPDESK_HOOK_ALLOW_CURSOR_PHASE=1 to allow while the Cursor clock phase is active.";
+    "WarpDesk cursor clock is not active (see .warpdesk/clock-local-state.json). Start a Cursor session (MCP request_cursor_session action=start) on the active ticket before agent edits. If you intentionally want dev-phase writes, set WARPDESK_HOOK_REQUIRE_CURSOR_PHASE=0 and optionally WARPDESK_HOOK_ALLOW_CURSOR_PHASE=1.";
   return {
     permission,
     user_message: msg,
     agent_message:
-      "Blocked by WarpDesk clock hook: start the dev clock on the active ticket (or enable cursor phase via env) before substantive edits (including this shell). Set WARPDESK_HOOK_GATE_SHELL=0 to disable shell gating.",
+      "Blocked by WarpDesk clock hook: cursor phase is required for gated writes/shell. Call request_cursor_session start (active ticket + ticket branch) before edits, or relax with WARPDESK_HOOK_REQUIRE_CURSOR_PHASE=0.",
   };
 }
 

@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url);
 const wu = require(
   path.join(
     path.dirname(fileURLToPath(import.meta.url)),
-    "../../../../packages/warpdesk-tools/workspace-users-cache.js",
+    "workspace-users-cache.js",
   ),
 ) as {
   ensureWorkspaceUsersCacheForSelectorDoc: (params: {

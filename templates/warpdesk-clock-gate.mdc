@@ -1,0 +1,33 @@
+---
+description: When WarpDesk clock hooks block file edits, steer to the user immediately (save tokens).
+alwaysApply: true
+---
+
+# Clock gate: stop early, ask the user
+
+This workspace may use **WarpDesk Tools** + **Cursor `preToolUse` hooks** so code edits only run during an allowed **Cursor** clock segment (after **dev** clock + `request_cursor_session` start, per **`vendor/warpdesk-client-kit/AGENTS.md`**).
+
+## On first sign of a block
+
+If **any** of these happen, treat it as a **hard stop** for autonomous editing — do **not** iterate on Shell, `node -e`, heredocs, or other bypasses to write project source:
+
+- A hook or tool result says the **dev** or **Cursor** clock is wrong / not running
+- `request_cursor_session` returns JSON with `ok: false` and `code: dev_not_running`
+- `apply_patch` / `Write` / `StrReplace` is denied or the model is told the workspace is gated
+
+## What to do (one message to the user)
+
+Send **one** concise message that asks the user to:
+
+1. **Start the dev clock** — Command palette: **WarpDesk: Start dev clock** (or the ticket selector **Start/Resume** flow they use)
+2. **Branch** — Ensure the current **git** branch name includes the **active ticket number** (e.g. `ticket-27`) if the extension enforces that
+3. **Start the Cursor session** — After (1)–(2), you may call **`request_cursor_session`** with `action: "start"` from MCP, *or* they use the extension UI, per AGENTS
+4. **Ping you** when ready so you can implement without workarounds
+
+## What not to do
+
+- Do **not** “try a different way” to write the same files across many turns
+- Do **not** assume HTTP `200` from the extension means success — the body may be `{ ok: false, code: "dev_not_running", ... }`; read the MCP tool output
+- Do **not** mark the task complete if zero files changed due to the gate
+
+This rule exists to **reduce token burn**; one clear handoff to the human beats a long attempt chain.

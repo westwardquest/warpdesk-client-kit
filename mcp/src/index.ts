@@ -447,7 +447,7 @@ mcpServer.registerTool(
   "request_cursor_session",
   {
     description:
-      "Calls the WarpDesk Tools extension on localhost (POST /cursor-session/start|stop). Requires the extension running with an active workspace: dev clock must be running before start; stop ends Cursor clock (optionally resume dev).",
+      "Calls the WarpDesk Tools extension on localhost (POST /cursor-session/start|stop). If start returns dev_not_running, STOP: ask the user to start the WarpDesk dev clock (and ensure the git branch includes the ticket number), then only retry this tool — do not use Shell or other tools to write files. Requires the extension: dev clock must be running before start; stop ends Cursor clock (optionally resume dev).",
     inputSchema: {
       action: z
         .enum(["start", "stop", "stop_and_resume_dev"])
@@ -522,7 +522,61 @@ mcpServer.registerTool(
         body,
       });
       const text = await res.text();
-      return { content: [{ type: "text" as const, text }] };
+      let payload: { ok?: boolean; code?: string; error?: string } | null = null;
+      try {
+        payload = text ? (JSON.parse(text) as { ok?: boolean; code?: string; error?: string }) : null;
+      } catch {
+        payload = null;
+      }
+      const extensionRefused =
+        res.ok && payload && typeof payload === "object" && payload.ok === false;
+      if (extensionRefused) {
+        const code = typeof payload.code === "string" ? payload.code : "";
+        const errMsg =
+          typeof payload.error === "string" && payload.error.trim()
+            ? payload.error.trim()
+            : "Extension returned ok: false";
+        const steer =
+          code === "dev_not_running"
+            ? [
+                "",
+                `Extension error: ${errMsg}`,
+                "Agent guidance (read this, then stop trying other tools for edits):",
+                "• Do NOT use Shell, terminal, or workarounds to write project files; hooks will still block or violate policy.",
+                "• Do NOT call request_cursor_session(start) in a loop without user action. Ask the user once, clearly:",
+                "  – In VS Code / Cursor: run command “WarpDesk: Start dev clock” (dev segment must be running).",
+                "  – Check out a branch whose name includes the active ticket number (e.g. ticket-27) if the extension requires it.",
+                "  – Then the user (or you after they confirm) can call request_cursor_session with action \"start\" again.",
+                "• Send a short message to the user listing these steps, then wait. One failed start = pause until dev clock is on.",
+              ].join("\n")
+            : code === "cursor_not_running"
+              ? [
+                  "",
+                  `Extension error: ${errMsg}`,
+                  "If you meant to stop, Cursor clock may already be off. Do not improvise file writes via Shell.",
+                ].join("\n")
+              : [
+                  "",
+                  `Extension error: ${errMsg}`,
+                  "Ask the user to fix the WarpDesk Tools / clock state; do not bypass with Shell file writes.",
+                ].join("\n");
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `200 ${res.statusText}\n${text}${steer}`,
+            },
+          ],
+          isError: true,
+        };
+      }
+      if (!res.ok) {
+        return {
+          content: [{ type: "text" as const, text: `${res.status} ${res.statusText}\n${text}` }],
+          isError: true,
+        };
+      }
+      return { content: [{ type: "text" as const, text: `${res.status} ${res.statusText}\n${text}` }] };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       return {

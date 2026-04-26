@@ -51,6 +51,8 @@ When **`warpdesk-tools`** is installed and the workspace folder is open in VS Co
    - shell heuristics (including explicit `node -e` fs-write detection and direct block on writing `.warpdesk/clock-local-state.json`)
    - Quick verification checklist in a workspace: confirm **`.cursor/hooks.json`** includes lifecycle + preToolUse commands, confirm preToolUse has **`failClosed: true`**, confirm the referenced scripts exist under **`vendor/warpdesk-client-kit/templates/cursor-hooks/`**, and confirm **`.warpdesk/clock-local-state.json`** changes phase during start/stop flows.
 
+7. **When the clock gate or hooks block your edits (save tokens)** — If an edit tool, **Shell** write, or **`request_cursor_session`** (with **`code: dev_not_running`**) makes it clear the **dev clock is not on** or **Cursor** segment is not active, **do not** spend multiple turns on workarounds (scripts, `node -e`, bypasses). **In one short reply to the user**, ask them to: **Start dev clock** in WarpDesk Tools, use a **git branch** that includes the ticket number if required, then **`request_cursor_session`** with **`action: start`**, or to confirm when that is done. **Do not** retry the same write pattern more than once without new user input. Reread **`.cursor/rules/warpdesk-clock-gate.mdc`** for the one-shot steering pattern.
+
 **Primary information source:** prefer the knowledge repo **`knowledge/business/`** and **`knowledge/technical/`** for customer-specific process. Use **web search** only when the user asks or the knowledge base is insufficient.
 
 ### MAIN ACTIONS (quick reference)

@@ -44,18 +44,6 @@ export type TicketSelectorDoc = {
   workspace_slug: string;
   tickets: TicketSelectorEntry[];
   active_index: number;
-  /** Global map of auth user id -> display label (extension + MCP hydrate). */
-  user_display_names?: Record<string, string>;
-  /** Optional member cache keyed by user id for selector rendering. */
-  user_directory?: Record<
-    string,
-    {
-      user_id: string;
-      role?: string;
-      label?: string;
-      avatar_url?: string | null;
-    }
-  >;
 };
 
 export type IncomingTicketRow = {
@@ -396,26 +384,11 @@ export async function syncCanonicalTicketSelector(params: {
   });
   mergedList = applySummaries(mergedList, summaries);
 
-  const prevNames =
-    previous &&
-    typeof previous.user_display_names === "object" &&
-    previous.user_display_names !== null
-      ? { ...previous.user_display_names }
-      : undefined;
-  const prevDirectory =
-    previous &&
-    typeof previous.user_directory === "object" &&
-    previous.user_directory !== null
-      ? { ...previous.user_directory }
-      : undefined;
-
   const doc: TicketSelectorDoc = {
     schema_version: 2,
     workspace_slug: slug,
     tickets: mergedList,
     active_index,
-    ...(prevNames ? { user_display_names: prevNames } : {}),
-    ...(prevDirectory ? { user_directory: prevDirectory } : {}),
   };
 
   const absolutePath = path.join(workspaceRoot, CANONICAL_SELECTOR_RELATIVE);

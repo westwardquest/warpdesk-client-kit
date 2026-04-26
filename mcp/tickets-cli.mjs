@@ -6,7 +6,7 @@
  *
  * Usage (cwd = workspace root, where warpdesk.config lives):
  *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs list [--limit N] [--status <status>] [--queue]
- *   (after a successful list, updates .warpdesk/tickets.ticketselector when tsx is available)
+ *   (after a successful list, updates .warpdesk/tickets.ticket_selector when tsx is available)
  *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs get <ticketUuid>
  *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs lookup <query>
  *   node vendor/warpdesk-client-kit/mcp/tickets-cli.mjs patch <ticketUuid> <path-to.json>

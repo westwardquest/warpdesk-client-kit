@@ -1,5 +1,5 @@
 /**
- * Canonical ticket selector JSON for WarpDesk Tools (*.ticketselector).
+ * Canonical ticket selector JSON for WarpDesk Tools (*.ticket_selector).
  * Single file per workspace; merge + priority sort; bulk time summaries.
  */
 import * as fs from "node:fs";
@@ -8,7 +8,7 @@ import { loadWorkspaceConfig } from "./workspace-config";
 
 export const CANONICAL_SELECTOR_RELATIVE = path.join(
   ".warpdesk",
-  "tickets.ticketselector",
+  "tickets.ticket_selector",
 );
 
 const LEGACY_SELECTOR_DIR = path.join(".warpdesk", "ticket-selectors");
@@ -313,7 +313,7 @@ export function tryCleanupLegacySelectorFiles(workspaceRoot: string): void {
   try {
     const names = fs.readdirSync(dir);
     for (const name of names) {
-      if (!name.endsWith(".ticketselector")) continue;
+      if (!name.endsWith(".ticket_selector")) continue;
       try {
         fs.unlinkSync(path.join(dir, name));
       } catch {

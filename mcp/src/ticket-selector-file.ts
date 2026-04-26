@@ -3,8 +3,27 @@
  * Single file per workspace; merge + priority sort; bulk time summaries.
  */
 import * as fs from "node:fs";
+import { createRequire } from "node:module";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadWorkspaceConfig } from "./workspace-config";
+
+const require = createRequire(import.meta.url);
+const wu = require(
+  path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../../../packages/warpdesk-tools/workspace-users-cache.js",
+  ),
+) as {
+  ensureWorkspaceUsersCacheForSelectorDoc: (params: {
+    workspaceRoot: string;
+    selectorDoc: unknown;
+    fetchUsers: () => Promise<{
+      ok: boolean;
+      json: { ok?: boolean; users?: unknown } | null;
+    }>;
+  }) => Promise<void>;
+};
 
 export const CANONICAL_SELECTOR_RELATIVE = path.join(
   ".warpdesk",
@@ -396,6 +415,35 @@ export async function syncCanonicalTicketSelector(params: {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(absolutePath, `${JSON.stringify(doc, null, 2)}\n`, "utf8");
   tryCleanupLegacySelectorFiles(workspaceRoot);
+
+  try {
+    await wu.ensureWorkspaceUsersCacheForSelectorDoc({
+      workspaceRoot,
+      selectorDoc: doc,
+      fetchUsers: async () => {
+        const res = await fetch(
+          `${baseUrl}/api/w/${encodeURIComponent(slug)}/users`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          },
+        );
+        const text = await res.text();
+        let json: { ok?: boolean; users?: unknown } | null;
+        try {
+          json = text ? (JSON.parse(text) as { ok?: boolean; users?: unknown }) : null;
+        } catch {
+          json = null;
+        }
+        return { ok: res.ok, json };
+      },
+    });
+  } catch {
+    /* best-effort cache; ignore */
+  }
 
   return {
     ok: true,

@@ -454,9 +454,17 @@ mcpServer.registerTool(
         .describe(
           "start: end dev segment and begin Cursor segment. stop: end Cursor segment and resume dev by default. stop_and_resume_dev: explicit alias for stop+resume.",
         ),
+      ticket_number: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe(
+          "Expected ticket number when action=start. If provided and the running dev clock is on a different ticket, start is denied with ticket_mismatch.",
+        ),
     },
   },
-  async ({ action }) => {
+  async ({ action, ticket_number }) => {
     const root = findWorkspaceRoot(process.cwd());
     if (!root) {
       return {
@@ -506,12 +514,16 @@ mcpServer.registerTool(
     const pathname =
       action === "start" ? "/cursor-session/start" : "/cursor-session/stop";
     const url = `http://127.0.0.1:${port}${pathname}`;
-    const body =
+    const bodyObj =
       action === "stop_and_resume_dev"
-        ? JSON.stringify({ resume_dev: true, source_hook_event: "mcp_tool" })
+        ? { resume_dev: true, source_hook_event: "mcp_tool" }
         : action === "stop"
-          ? JSON.stringify({ source_hook_event: "mcp_tool" })
-          : JSON.stringify({ source_hook_event: "mcp_tool" });
+          ? { source_hook_event: "mcp_tool" }
+          : {
+              source_hook_event: "mcp_tool",
+              ...(ticket_number != null ? { ticket_number } : {}),
+            };
+    const body = JSON.stringify(bodyObj);
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -547,6 +559,15 @@ mcpServer.registerTool(
                 "  – Then the user (or you after they confirm) can call request_cursor_session with action \"start\" again.",
                 "• Send a short message to the user listing these steps, then wait. One failed start = pause until dev clock is on.",
               ].join("\n")
+            : code === "ticket_mismatch"
+              ? [
+                  "",
+                  `Extension error: ${errMsg}`,
+                  "Agent guidance (firm):",
+                  "• Do NOT start Cursor session on the wrong ticket clock.",
+                  "• Ask the user to switch the running WarpDesk dev clock to the requested ticket number, then retry request_cursor_session(action=\"start\", ticket_number=...).",
+                  "• Do NOT bypass with Shell edits or repeated start attempts while ticket mismatch remains.",
+                ].join("\n")
             : code === "cursor_not_running"
               ? [
                   "",

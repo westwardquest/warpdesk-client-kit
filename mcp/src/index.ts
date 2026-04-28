@@ -62,7 +62,7 @@ async function maybeAppendTicketSelectorHint(
     });
     if (sync.ok) {
       return (
-        `${r.text}\n\nUpdated WarpDesk ticket selector (open in WarpDesk Tools): ${sync.relativePath}`
+        `${r.text}\n\nUpdated WarpDesk ticket selector: ${sync.relativePath}`
       );
     }
   } catch {
@@ -328,7 +328,7 @@ mcpServer.registerTool(
   "draft_ticket_update",
   {
     description:
-      "Create a reviewable YAML draft under .warpdesk/ticket-drafts/ (schema .ticket_draft). The human must open the draft in the WarpDesk Tools ticket draft editor (VS Code) and use Confirm or Discard — do NOT call shell/CLI to apply or reject, and do not attempt to apply the draft via any other tool. Prefer this over direct updates for agent-driven ticket changes.",
+      "Create a reviewable YAML draft under .warpdesk/ticket-drafts/ (schema .ticket_draft). Humans apply or discard only in the WarpDesk Tools *.ticket_draft editor — agents MUST NOT apply/reject via shell, CLI, or any MCP tool. Prefer this over direct updates for agent-driven ticket changes. After success: reply briefly (paths only); do NOT add closing paragraphs telling the user to Confirm in WarpDesk Tools or to close the ticket — avoid repeating that in chat or inside draft comment bodies (the YAML file documents workflow).",
     inputSchema: {
       slug: z.string().describe("Workspace slug (must match warpdesk.config WORKSPACE_SLUG)"),
       ticketId: z.string().uuid().describe("Ticket UUID"),
@@ -403,9 +403,9 @@ mcpServer.registerTool(
     });
     const text =
       `Wrote draft file (YAML).\n\n` +
-      `draft_path (relative to workspace): ${r.draftRelativePath}\n\n` +
-      `Tell the user to open this file in the WarpDesk Tools ticket draft editor and use Confirm (apply) or Discard. Do not run apply/reject via terminal, shell, or any MCP tool.\n` +
-      `absolutePath: ${r.absolutePath}`;
+      `draft_path (relative to workspace): ${r.draftRelativePath}\n` +
+      `absolutePath: ${r.absolutePath}\n\n` +
+      `Do not append boilerplate to your reply or to ticket comment fields asking the user to Confirm in WarpDesk Tools—the draft headers explain apply/reject; keep prose concise. Agents cannot apply via MCP/CLI/shell.`;
     return { content: [{ type: "text" as const, text }] };
   },
 );

@@ -74,7 +74,7 @@ The **`warpdesk-tickets` MCP server does not expose** **`update_ticket`** or **`
 2. The user (or you) **edits** the file; humans **Confirm** or **Discard** in the **`warpdesk-tools`** custom editor for **`*.ticket_draft`** (or the palette commands when the file is opened as **text**). Agents **must not** apply or discard drafts via MCP, CLI, or shell—there are no **`apply_ticket_update_draft`** / **`reject_ticket_update_draft`** tools and no **`apply-draft`** / **`reject-draft`** CLI.
 3. **Confirm** runs **PATCH** then optional **POST comment** (same rules as **`mcp/lib/apply-ticket-draft.mjs`**), then **deletes** the draft. **Discard** deletes the file without calling the API.
 
-Ticket comments in the draft should stay **customer-facing**: clear, professional, and **not** overly technical. **Avoid** pasted code, stack traces, and internal file paths unless the customer asked for that detail.
+Ticket comments in the draft should stay **customer-facing**: clear, professional, and **not** overly technical. **Avoid** pasted code, stack traces, and internal file paths unless the customer asked for that detail. **Avoid** boilerplate closings (“please Confirm this draft in WarpDesk Tools…”) — humans apply drafts in the extension; repeating that in the comment body or in chat adds noise.
 
 **Escape hatch (humans / scripts only):** set **`WARPDESK_MCP_ALLOW_DIRECT_UPDATES=1`** in **`mcp.json`** `env` next to **`warpdesk-tickets`** to register the legacy **`update_ticket`** and **`add_ticket_comment`** tools (e.g. rare automation). Do not enable this just to skip review.
 
@@ -88,7 +88,7 @@ Summarise **ticket updates** and anything else you intend to do on the remote. L
 
 ## Tickets — MCP first (read this first)
 
-**Prefer the `warpdesk-tickets` MCP tools** whenever they appear in your tool list (`list_priority_active_tickets`, `get_ticket`, `get_ticket_by_number`, `draft_ticket_update`, `search_tickets`, `request_cursor_session`, `bootstrap_workspace`; plus **`update_ticket`** / **`add_ticket_comment`** only if **`WARPDESK_MCP_ALLOW_DIRECT_UPDATES=1`**). They call the same HTTP API as the app. Read-style ticket tools **merge into `.warpdesk/.ticket_selector`** (see **Ticket selector file** above). For **mutations**, use **`draft_ticket_update`** only to write the draft file; tell the user to **Confirm** in **warpdesk-tools** (do not apply via tools or terminal).
+**Prefer the `warpdesk-tickets` MCP tools** whenever they appear in your tool list (`list_priority_active_tickets`, `get_ticket`, `get_ticket_by_number`, `draft_ticket_update`, `search_tickets`, `request_cursor_session`, `bootstrap_workspace`; plus **`update_ticket`** / **`add_ticket_comment`** only if **`WARPDESK_MCP_ALLOW_DIRECT_UPDATES=1`**). They call the same HTTP API as the app. Read-style ticket tools **merge into `.warpdesk/.ticket_selector`** (see **Ticket selector file** above). For **mutations**, use **`draft_ticket_update`** only to write the draft file (humans **Confirm** in **warpdesk-tools** — do not apply via tools or terminal). Do **not** add repetitive reminders in chat or in draft comment bodies about confirming in the extension.
 
 **If MCP tools are not available** (tools not listed, or calls fail after fixing auth), use the **Shell** tool from the **workspace repo root** and run the npm scripts below—the CLI uses the same API and **`warpdesk.config`** / **`.cursor/mcp.json`** token.
 
